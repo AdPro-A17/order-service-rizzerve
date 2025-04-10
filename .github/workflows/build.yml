@@ -1,0 +1,47 @@
+name: Scanning code with SonarCloud
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - 'README.md'
+
+jobs:
+  build-and-analyze:
+    name: Build, Test, and Analyze with SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the Git repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      - name: Set gradlew as executable
+        run: chmod +x ./gradlew
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run unit tests
+        run: ./gradlew test
+
+      - name: Run SonarCloud analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew build sonar --info
