@@ -2,7 +2,7 @@ name: Scanning code with SonarCloud
 
 on:
   push:
-    branches: ["main"]
+    branches: ["master"]
     paths-ignore:
       - 'README.md'
   pull_request:
