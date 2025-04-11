@@ -290,43 +290,6 @@ class OrderServiceTest {
     }
 
     @Test
-    void testCancelOrder_FromNew() {
-        // Arrange: Order is NEW
-        assertTrue(order.getState() instanceof NewOrderState);
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        Order cancelledOrder = orderService.cancelOrder(orderId);
-
-        // Assert
-        assertNotNull(cancelledOrder);
-        assertTrue(cancelledOrder.getState() instanceof CancelledOrderState);
-        assertEquals("CANCELLED", cancelledOrder.getStatus());
-        verify(orderRepository, times(1)).findById(orderId);
-        verify(orderRepository, times(1)).save(order);
-    }
-
-    @Test
-    void testCancelOrder_FromProcessing() {
-        // Arrange: Manually set state to Processing
-        order.setState(new ProcessingOrderState(order));
-        assertTrue(order.getState() instanceof ProcessingOrderState);
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        Order cancelledOrder = orderService.cancelOrder(orderId);
-
-        // Assert
-        assertNotNull(cancelledOrder);
-        assertTrue(cancelledOrder.getState() instanceof CancelledOrderState);
-        assertEquals("CANCELLED", cancelledOrder.getStatus());
-        verify(orderRepository, times(1)).findById(orderId);
-        verify(orderRepository, times(1)).save(order);
-    }
-
-    @Test
     void testCompleteOrder_FromProcessing() {
         // Arrange: Manually set state to Processing
          order.setState(new ProcessingOrderState(order));
@@ -343,24 +306,6 @@ class OrderServiceTest {
         assertEquals("COMPLETED", completedOrder.getStatus());
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
-    }
-
-     @Test
-    void testStateTransitionFailure_CancelCompletedOrder() {
-        // Arrange: Set state to Completed
-        order.setState(new CompletedOrderState(order));
-        assertTrue(order.getState() instanceof CompletedOrderState);
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        // No need to mock save, as it shouldn't be called
-
-        // Act & Assert
-        assertThrows(IllegalStateException.class, () -> {
-            orderService.cancelOrder(orderId);
-        }, "Should throw IllegalStateException when trying to cancel a completed order");
-
-        verify(orderRepository, times(1)).findById(orderId);
-        verify(orderRepository, never()).save(any(Order.class)); // Should not save if transition failed
-        assertTrue(order.getState() instanceof CompletedOrderState); // State should remain Completed
     }
 
      @Test

@@ -102,14 +102,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public Order cancelOrder(UUID orderId) {
-        Order order = findOrderByIdOrThrow(orderId);
-        order.cancelOrder(); // Delegate to state object
-        return orderRepository.save(order);
-    }
-
-    @Override
-    @Transactional
     public Order completeOrder(UUID orderId) {
         Order order = findOrderByIdOrThrow(orderId);
         order.completeOrder(); // Delegate to state object

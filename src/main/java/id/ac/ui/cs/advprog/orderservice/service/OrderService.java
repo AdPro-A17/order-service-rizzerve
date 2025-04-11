@@ -77,16 +77,6 @@ public interface OrderService {
     Order confirmOrder(UUID orderId);
 
     /**
-     * Cancels an order.
-     * Delegates the action to the Order's current state.
-     * @param orderId The ID of the order to cancel.
-     * @return The updated Order object.
-     * @throws OrderNotFoundException if the orderId does not exist.
-     * @throws IllegalStateException if the order cannot be cancelled in its current state.
-     */
-    Order cancelOrder(UUID orderId);
-
-    /**
      * Marks an order as completed.
      * Delegates the action to the Order's current state.
      * @param orderId The ID of the order to complete.

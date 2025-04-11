@@ -30,14 +30,6 @@ class NewOrderStateTest {
     }
 
     @Test
-    void testCancelOrder_TransitionToCancelled() {
-        state.cancelOrder();
-        // Verify that the order's state was changed to CancelledOrderState
-        assertTrue(order.getState() instanceof CancelledOrderState);
-         assertEquals("CANCELLED", order.getStatus());
-    }
-
-    @Test
     void testCompleteOrder_InvalidTransition() {
         // A new order cannot be directly completed
         assertThrows(IllegalStateException.class, () -> {
@@ -75,13 +67,6 @@ class ProcessingOrderStateTest {
     }
 
     @Test
-    void testCancelOrder_TransitionToCancelled() {
-        state.cancelOrder();
-        assertTrue(order.getState() instanceof CancelledOrderState);
-        assertEquals("CANCELLED", order.getStatus());
-    }
-
-    @Test
     void testCompleteOrder_TransitionToCompleted() {
         state.completeOrder();
         assertTrue(order.getState() instanceof CompletedOrderState);
@@ -113,12 +98,6 @@ class CompletedOrderStateTest {
     }
 
     @Test
-    void testCancelOrder_InvalidTransition() {
-         assertThrows(IllegalStateException.class, () -> state.cancelOrder());
-         assertTrue(order.getState() instanceof CompletedOrderState);
-    }
-
-    @Test
     void testCompleteOrder_NoTransition() {
         // Should not throw error, maybe log? Test that state remains Completed.
         assertDoesNotThrow(() -> state.completeOrder());
@@ -128,41 +107,5 @@ class CompletedOrderStateTest {
      @Test
     void testGetStatusString() {
         assertEquals("COMPLETED", state.getStatus());
-    }
-}
-
-class CancelledOrderStateTest {
-    private Order order;
-    private OrderState state;
-
-    @BeforeEach
-    void setUp() {
-        order = new Order("T4");
-        order.setState(new CancelledOrderState(order));
-        state = order.getState();
-        assertTrue(state instanceof CancelledOrderState);
-    }
-
-    @Test
-    void testConfirmOrder_InvalidTransition() {
-        assertThrows(IllegalStateException.class, () -> state.confirmOrder());
-        assertTrue(order.getState() instanceof CancelledOrderState);
-    }
-
-    @Test
-    void testCancelOrder_NoTransition() {
-        assertDoesNotThrow(() -> state.cancelOrder());
-        assertTrue(order.getState() instanceof CancelledOrderState);
-    }
-
-    @Test
-    void testCompleteOrder_InvalidTransition() {
-        assertThrows(IllegalStateException.class, () -> state.completeOrder());
-        assertTrue(order.getState() instanceof CancelledOrderState);
-    }
-
-     @Test
-    void testGetStatusString() {
-        assertEquals("CANCELLED", state.getStatus());
     }
 } 

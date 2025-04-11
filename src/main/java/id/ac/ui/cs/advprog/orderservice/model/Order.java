@@ -72,10 +72,6 @@ public class Order {
         getState().confirmOrder();
     }
 
-    public void cancelOrder() {
-        getState().cancelOrder();
-    }
-
     public void completeOrder() {
         getState().completeOrder();
     }
@@ -153,7 +149,6 @@ class StateFactory {
             case "NEW" -> new NewOrderState(order);
             case "PROCESSING" -> new id.ac.ui.cs.advprog.orderservice.model.state.ProcessingOrderState(order);
             case "COMPLETED" -> new id.ac.ui.cs.advprog.orderservice.model.state.CompletedOrderState(order);
-            case "CANCELLED" -> new id.ac.ui.cs.advprog.orderservice.model.state.CancelledOrderState(order);
             default -> throw new IllegalArgumentException("Unknown order status: " + status);
         };
     }

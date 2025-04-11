@@ -210,22 +210,6 @@ class OrderTest {
     }
 
     @Test
-    void testCancelOrderDelegatesToState() {
-        OrderState mockState = mock(OrderState.class);
-        order.setState(mockState);
-        order.cancelOrder();
-        verify(mockState, times(1)).cancelOrder();
-    }
-
-     @Test
-    void testCompleteOrderDelegatesToState() {
-        OrderState mockState = mock(OrderState.class);
-        order.setState(mockState);
-        order.completeOrder();
-        verify(mockState, times(1)).completeOrder();
-    }
-
-    @Test
     void testGetStatusDelegatesToState() {
          // Arrange: Set a specific state (e.g., Processing) using setState
          ProcessingOrderState processingState = new ProcessingOrderState(order);

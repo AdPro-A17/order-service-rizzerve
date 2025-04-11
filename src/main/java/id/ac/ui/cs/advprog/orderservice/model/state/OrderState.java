@@ -13,13 +13,6 @@ public interface OrderState {
     void confirmOrder();
 
     /**
-     * Action to cancel the order.
-     * May transition the order to the CANCELLED state.
-     * Throws IllegalStateException if the action is not allowed in the current state.
-     */
-    void cancelOrder();
-
-    /**
      * Action to mark the order as completed.
      * May transition the order to the COMPLETED state.
      * Throws IllegalStateException if the action is not allowed in the current state.
