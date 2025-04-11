@@ -1,5 +1,11 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
+import id.ac.ui.cs.advprog.orderservice.model.Checkout;
+import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
+import id.ac.ui.cs.advprog.orderservice.pricing.CheckoutPricing;
+import id.ac.ui.cs.advprog.orderservice.pricing.CouponPricing;
+import id.ac.ui.cs.advprog.orderservice.pricing.RegularPricing;
+import id.ac.ui.cs.advprog.orderservice.repository.CheckoutRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;

@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.orderservice.pricing;
 
+import id.ac.ui.cs.advprog.orderservice.model.Checkout;
+import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
