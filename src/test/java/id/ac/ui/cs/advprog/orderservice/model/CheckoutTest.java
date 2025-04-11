@@ -9,7 +9,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class CheckoutTest {
+class CheckoutTest {
     private Checkout checkout;
     private List<OrderItem> orderItems;
     private OrderItem item1;
@@ -39,61 +39,61 @@ public class CheckoutTest {
     }
 
     @Test
-    public void testCheckoutConstructor() {
+    void testCheckoutConstructor() {
         assertNotNull(checkout.getId(), "ID should be automatically generated");
     }
 
     @Test
-    public void testSetAndGetId() {
+    void testSetAndGetId() {
         UUID newId = UUID.randomUUID();
         checkout.setId(newId);
         assertEquals(newId, checkout.getId(), "ID getter should return the set ID");
     }
 
     @Test
-    public void testSetAndGetOrderItems() {
+    void testSetAndGetOrderItems() {
         checkout.setOrderItems(orderItems);
         assertEquals(orderItems, checkout.getOrderItems(), "OrderItems getter should return the set items");
         assertEquals(2, checkout.getOrderItems().size(), "OrderItems size should match");
     }
 
     @Test
-    public void testSetAndGetTotalPrice() {
+    void testSetAndGetTotalPrice() {
         double totalPrice = 125000.0;
         checkout.setTotalPrice(totalPrice);
         assertEquals(totalPrice, checkout.getTotalPrice(), "TotalPrice getter should return the set value");
     }
 
     @Test
-    public void testSetAndGetCouponCode() {
+    void testSetAndGetCouponCode() {
         String couponCode = "SAVE10";
         checkout.setCouponCode(couponCode);
         assertEquals(couponCode, checkout.getCouponCode(), "CouponCode getter should return the set code");
     }
 
     @Test
-    public void testSetAndGetDiscountAmount() {
+    void testSetAndGetDiscountAmount() {
         double discountAmount = 12500.0;
         checkout.setDiscountAmount(discountAmount);
         assertEquals(discountAmount, checkout.getDiscountAmount(), "DiscountAmount getter should return the set value");
     }
 
     @Test
-    public void testSetAndGetFinalPrice() {
+    void testSetAndGetFinalPrice() {
         double finalPrice = 112500.0;
         checkout.setFinalPrice(finalPrice);
         assertEquals(finalPrice, checkout.getFinalPrice(), "FinalPrice getter should return the set value");
     }
 
     @Test
-    public void testSetAndGetTableNumber() {
+    void testSetAndGetTableNumber() {
         String tableNumber = "A12";
         checkout.setTableNumber(tableNumber);
         assertEquals(tableNumber, checkout.getTableNumber(), "TableNumber getter should return the set value");
     }
 
     @Test
-    public void testSetAndGetCustomerId() {
+    void testSetAndGetCustomerId() {
         UUID customerId = UUID.randomUUID();
         checkout.setCustomerId(customerId);
         assertEquals(customerId, checkout.getCustomerId(), "CustomerId getter should return the set ID");

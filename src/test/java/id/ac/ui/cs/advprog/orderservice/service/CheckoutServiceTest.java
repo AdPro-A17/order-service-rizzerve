@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-public class CheckoutServiceTest {
+class CheckoutServiceTest {
 
     @Mock
     private CheckoutService checkoutService;
@@ -53,7 +53,6 @@ public class CheckoutServiceTest {
         when(checkoutService.createCheckout(anyString(), anyList())).thenReturn(checkout);
         when(checkoutService.applyCoupon(any(UUID.class), anyString())).thenReturn(checkout);
         when(checkoutService.getCheckout(any(UUID.class))).thenReturn(checkout);
-        when(checkoutService.finalizeCheckout(any(UUID.class))).thenReturn(checkout);
     }
 
     @Test
@@ -78,13 +77,5 @@ public class CheckoutServiceTest {
 
         assertNotNull(result, "getCheckout should return a non-null checkout");
         verify(checkoutService).getCheckout(checkoutId);
-    }
-
-    @Test
-    void testFinalizeCheckoutContract() {
-        Checkout result = checkoutService.finalizeCheckout(checkoutId);
-
-        assertNotNull(result, "finalizeCheckout should return a non-null checkout");
-        verify(checkoutService).finalizeCheckout(checkoutId);
     }
 }

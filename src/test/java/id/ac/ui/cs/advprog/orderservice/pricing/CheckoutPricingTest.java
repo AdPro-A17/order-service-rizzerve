@@ -13,7 +13,7 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 
-public class CheckoutPricingTest {
+class CheckoutPricingTest {
 
     @Mock
     private CheckoutPricing checkoutPricing;

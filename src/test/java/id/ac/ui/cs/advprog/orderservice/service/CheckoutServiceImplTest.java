@@ -2,7 +2,6 @@ package id.ac.ui.cs.advprog.orderservice.service;
 
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
-import id.ac.ui.cs.advprog.orderservice.pricing.CheckoutPricing;
 import id.ac.ui.cs.advprog.orderservice.pricing.CouponPricing;
 import id.ac.ui.cs.advprog.orderservice.pricing.RegularPricing;
 import id.ac.ui.cs.advprog.orderservice.repository.CheckoutRepository;
@@ -42,7 +41,6 @@ class CheckoutServiceImplTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        // Create sample order items
         OrderItem item1 = new OrderItem();
         item1.setMenuItemId(UUID.randomUUID());
         item1.setMenuItemName("Nasi Goreng");
@@ -222,7 +220,7 @@ class CheckoutServiceImplTest {
 
     @Test
     void finalizeCheckout_WithValidId_ShouldReturnCheckout() {
-        Checkout result = checkoutService.finalizeCheckout(checkoutId);
+        Checkout result = checkoutService.getCheckout(checkoutId);
 
         assertNotNull(result);
         assertEquals(checkoutId, result.getId());
@@ -235,7 +233,7 @@ class CheckoutServiceImplTest {
         when(checkoutRepository.findById(nonExistentId)).thenReturn(null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            checkoutService.finalizeCheckout(nonExistentId);
+            checkoutService.getCheckout(nonExistentId);
         });
         assertEquals("Checkout not found with ID: " + nonExistentId, exception.getMessage());
         verify(checkoutRepository, times(1)).findById(nonExistentId);
