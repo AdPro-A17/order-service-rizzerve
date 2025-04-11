@@ -16,13 +16,6 @@ public class ProcessingOrderState implements OrderState {
     }
 
     @Override
-    public void cancelOrder() {
-        // Transition to Cancelled state
-        order.setState(new CancelledOrderState(order));
-        // Potentially add logic here to notify kitchen, release stock etc.
-    }
-
-    @Override
     public void completeOrder() {
         // Transition to Completed state
         order.setState(new CompletedOrderState(order));

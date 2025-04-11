@@ -17,12 +17,6 @@ public class NewOrderState implements OrderState {
     }
 
     @Override
-    public void cancelOrder() {
-        // Transition to Cancelled state
-        order.setState(new CancelledOrderState(order));
-    }
-
-    @Override
     public void completeOrder() {
         throw new IllegalStateException("Cannot complete a new order directly. Must be confirmed first.");
     }

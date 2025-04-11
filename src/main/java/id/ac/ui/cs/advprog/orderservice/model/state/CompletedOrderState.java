@@ -16,11 +16,6 @@ public class CompletedOrderState implements OrderState {
     }
 
     @Override
-    public void cancelOrder() {
-        throw new IllegalStateException("Cannot cancel a completed order.");
-    }
-
-    @Override
     public void completeOrder() {
         // Already completed, do nothing or log warning
         System.out.println("Order is already completed.");
