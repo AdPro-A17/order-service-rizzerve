@@ -17,7 +17,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final CheckoutRepository checkoutRepository;
     private final RegularPricing regularPricing;
     private final CouponPricing couponPricing;
-    private static final String checkoutNotFoundMessage = "Checkout not found with ID: ";
+    private static final String CHECKOUT_NOT_FOUND_MESSAGE = "Checkout not found with ID: ";
 
     @Autowired
     public CheckoutServiceImpl(
@@ -49,7 +49,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         Checkout checkout = checkoutRepository.findById(checkoutId);
 
         if (checkout == null) {
-            throw new IllegalArgumentException(checkoutNotFoundMessage + checkoutId);
+            throw new IllegalArgumentException(CHECKOUT_NOT_FOUND_MESSAGE + checkoutId);
         }
 
         checkout.setCouponCode(couponCode);
@@ -71,7 +71,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         Checkout checkout = checkoutRepository.findById(checkoutId);
 
         if (checkout == null) {
-            throw new IllegalArgumentException(checkoutNotFoundMessage + checkoutId);
+            throw new IllegalArgumentException(CHECKOUT_NOT_FOUND_MESSAGE + checkoutId);
         }
 
         return checkout;
