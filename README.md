@@ -4,3 +4,5 @@ Untuk saat ini, kami melakukan set up deployment di railway, disebabkan terdapat
 Berikut URL deployment saat ini untuk order-service pada proyek rizzerve:
 
 URL: https://order-service-rizzerve-production.up.railway.app/
+
+Apabila, nantinya ada solusi yang lebih baik untuk mengatasi perubahan DNS pada AWS Academy, maka kami akan mempertimbangkan ulang untuk melakukan set up ci cd ke AWS Academy.
