@@ -217,25 +217,4 @@ class CheckoutServiceImplTest {
         assertEquals("Checkout not found with ID: " + nonExistentId, exception.getMessage());
         verify(checkoutRepository, times(1)).findById(nonExistentId);
     }
-
-    @Test
-    void finalizeCheckout_WithValidId_ShouldReturnCheckout() {
-        Checkout result = checkoutService.getCheckout(checkoutId);
-
-        assertNotNull(result);
-        assertEquals(checkoutId, result.getId());
-        verify(checkoutRepository, times(1)).findById(checkoutId);
-    }
-
-    @Test
-    void finalizeCheckout_WithNonExistentId_ShouldThrowException() {
-        UUID nonExistentId = UUID.randomUUID();
-        when(checkoutRepository.findById(nonExistentId)).thenReturn(null);
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            checkoutService.getCheckout(nonExistentId);
-        });
-        assertEquals("Checkout not found with ID: " + nonExistentId, exception.getMessage());
-        verify(checkoutRepository, times(1)).findById(nonExistentId);
-    }
 }
