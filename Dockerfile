@@ -1,6 +1,6 @@
 FROM docker.io/library/eclipse-temurin:21-jdk-alpine AS builder
 
-WORKDIR /src/be-profile
+WORKDIR /src/order-service
 
 COPY build.gradle.kts settings.gradle.kts gradlew ./
 COPY gradle ./gradle
