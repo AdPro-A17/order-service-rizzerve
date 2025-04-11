@@ -7,90 +7,162 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-// Test the abstract state or individual concrete states
-class NewOrderStateTest { // Example: Testing NewOrderState
+// Test individual concrete states
+class NewOrderStateTest {
 
     private Order order;
     private OrderState state;
 
     @BeforeEach
     void setUp() {
-        order = mock(Order.class); // Mock the Order context
-        state = new NewOrderState(order);
-
-        fail("OrderState interface and concrete state classes (e.g., NewOrderState) needed.");
+        // Use a real Order object to test state transitions correctly
+        order = new Order("T1");
+        state = order.getState(); // Should be NewOrderState initially
+        assertTrue(state instanceof NewOrderState);
     }
 
     @Test
     void testConfirmOrder_TransitionToProcessing() {
         state.confirmOrder();
         // Verify that the order's state was changed to ProcessingOrderState
-        // verify(order).setState(any(ProcessingOrderState.class));
-        fail("Implementation needed. Verify state transition on confirm.");
+        assertTrue(order.getState() instanceof ProcessingOrderState);
+        assertEquals("PROCESSING", order.getStatus());
     }
 
     @Test
     void testCancelOrder_TransitionToCancelled() {
         state.cancelOrder();
         // Verify that the order's state was changed to CancelledOrderState
-        // verify(order).setState(any(CancelledOrderState.class));
-        fail("Implementation needed. Verify state transition on cancel.");
+        assertTrue(order.getState() instanceof CancelledOrderState);
+         assertEquals("CANCELLED", order.getStatus());
     }
 
     @Test
     void testCompleteOrder_InvalidTransition() {
         // A new order cannot be directly completed
-        // assertThrows(IllegalStateException.class, () -> {
-        //     state.completeOrder();
-        // });
-        // verify(order, never()).setState(any(CompletedOrderState.class));
-        fail("Implementation needed. Verify invalid transition on complete.");
+        assertThrows(IllegalStateException.class, () -> {
+            state.completeOrder();
+        });
+        // Verify state did not change
+        assertTrue(order.getState() instanceof NewOrderState);
     }
 
     @Test
     void testGetStatusString() {
-        // assertEquals("NEW", state.getStatus());
-        fail("Implementation needed for getStatus method in state.");
+        assertEquals("NEW", state.getStatus());
     }
 }
 
-// Add similar test classes for ProcessingOrderState, CompletedOrderState, CancelledOrderState etc.
-// Example: ProcessingOrderStateTest
+
 class ProcessingOrderStateTest {
     private Order order;
     private OrderState state;
 
     @BeforeEach
     void setUp() {
-        order = mock(Order.class);
-        state = new ProcessingOrderState(order);
-        fail("ProcessingOrderState class needed.");
+        order = new Order("T2");
+        // Manually set the state to Processing for this test class
+        order.setState(new ProcessingOrderState(order));
+        state = order.getState();
+        assertTrue(state instanceof ProcessingOrderState);
     }
 
     @Test
     void testConfirmOrder_InvalidTransition() {
-        // assertThrows(IllegalStateException.class, () -> state.confirmOrder());
-        // verify(order, never()).setState(any());
-        fail("Verify invalid transition on confirm.");
+         assertThrows(IllegalStateException.class, () -> state.confirmOrder());
+         // Verify state remains Processing
+         assertTrue(order.getState() instanceof ProcessingOrderState);
     }
 
     @Test
     void testCancelOrder_TransitionToCancelled() {
         state.cancelOrder();
-        // verify(order).setState(any(CancelledOrderState.class));
-        fail("Verify state transition on cancel.");
+        assertTrue(order.getState() instanceof CancelledOrderState);
+        assertEquals("CANCELLED", order.getStatus());
     }
 
     @Test
     void testCompleteOrder_TransitionToCompleted() {
         state.completeOrder();
-        // verify(order).setState(any(CompletedOrderState.class));
-        fail("Verify state transition on complete.");
+        assertTrue(order.getState() instanceof CompletedOrderState);
+        assertEquals("COMPLETED", order.getStatus());
     }
 
      @Test
     void testGetStatusString() {
-        // assertEquals("PROCESSING", state.getStatus());
-        fail("Implementation needed for getStatus.");
+        assertEquals("PROCESSING", state.getStatus());
+    }
+}
+
+class CompletedOrderStateTest {
+    private Order order;
+    private OrderState state;
+
+    @BeforeEach
+    void setUp() {
+        order = new Order("T3");
+        order.setState(new CompletedOrderState(order));
+        state = order.getState();
+        assertTrue(state instanceof CompletedOrderState);
+    }
+
+    @Test
+    void testConfirmOrder_InvalidTransition() {
+        assertThrows(IllegalStateException.class, () -> state.confirmOrder());
+        assertTrue(order.getState() instanceof CompletedOrderState);
+    }
+
+    @Test
+    void testCancelOrder_InvalidTransition() {
+         assertThrows(IllegalStateException.class, () -> state.cancelOrder());
+         assertTrue(order.getState() instanceof CompletedOrderState);
+    }
+
+    @Test
+    void testCompleteOrder_NoTransition() {
+        // Should not throw error, maybe log? Test that state remains Completed.
+        assertDoesNotThrow(() -> state.completeOrder());
+        assertTrue(order.getState() instanceof CompletedOrderState);
+    }
+
+     @Test
+    void testGetStatusString() {
+        assertEquals("COMPLETED", state.getStatus());
+    }
+}
+
+class CancelledOrderStateTest {
+    private Order order;
+    private OrderState state;
+
+    @BeforeEach
+    void setUp() {
+        order = new Order("T4");
+        order.setState(new CancelledOrderState(order));
+        state = order.getState();
+        assertTrue(state instanceof CancelledOrderState);
+    }
+
+    @Test
+    void testConfirmOrder_InvalidTransition() {
+        assertThrows(IllegalStateException.class, () -> state.confirmOrder());
+        assertTrue(order.getState() instanceof CancelledOrderState);
+    }
+
+    @Test
+    void testCancelOrder_NoTransition() {
+        assertDoesNotThrow(() -> state.cancelOrder());
+        assertTrue(order.getState() instanceof CancelledOrderState);
+    }
+
+    @Test
+    void testCompleteOrder_InvalidTransition() {
+        assertThrows(IllegalStateException.class, () -> state.completeOrder());
+        assertTrue(order.getState() instanceof CancelledOrderState);
+    }
+
+     @Test
+    void testGetStatusString() {
+        assertEquals("CANCELLED", state.getStatus());
     }
 } 

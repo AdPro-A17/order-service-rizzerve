@@ -1,7 +1,10 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
+import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
+import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
+import id.ac.ui.cs.advprog.orderservice.model.state.*;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,264 +28,354 @@ class OrderServiceTest {
     @Mock
     private OrderRepository orderRepository;
 
-    // Mock external dependencies if needed (e.g., MenuService, PaymentService)
-    // @Mock
-    // private MenuService menuService;
+    // No need to mock states if we test interactions via the Order object
 
     @InjectMocks
-    private OrderServiceImpl orderService; // Inject mocks into the implementation class
+    private OrderServiceImpl orderService;
 
     private Order order;
     private OrderItem item;
     private UUID orderId;
     private UUID menuItemId;
+    private UUID orderItemId;
 
     @BeforeEach
     void setUp() {
         orderId = UUID.randomUUID();
         menuItemId = UUID.randomUUID();
+        orderItemId = UUID.randomUUID();
 
+        // Use a real Order object to test interactions
         order = new Order("T1");
-        order.setId(orderId);
-        // order.setState(new NewOrderState(order)); // Assume initial state is set
+        order.setId(orderId); // Manually set ID for testing findById
+        // Initial state is NEW
 
-        item = new OrderItem();
-        item.setId(UUID.randomUUID());
-        item.setMenuItemId(menuItemId);
-        item.setMenuItemName("Test Item");
-        item.setQuantity(1);
-        item.setPrice(10.0);
-        item.setSubtotal(10.0);
+        item = new OrderItem(order, menuItemId, "Test Item", 1, 10.0);
+        item.setId(orderItemId); // Manually set ID
 
-        // Ensure OrderService interface and OrderServiceImpl exist
-        fail("OrderService interface and OrderServiceImpl implementation needed.");
+        // Don't add item here, add it in specific tests
     }
 
     @Test
     void testCreateOrder() {
-        // Mock repository save behavior
+        // Arrange: Mock repository save to return the saved order with potential ID update
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
-            Order o = invocation.getArgument(0);
-            o.setId(UUID.randomUUID()); // Simulate ID generation
-            // Simulate setting initial state if done in service/constructor
-            return o;
+            Order savedOrder = invocation.getArgument(0);
+            // Simulate ID generation if not done in constructor
+            if (savedOrder.getId() == null) {
+                 savedOrder.setId(UUID.randomUUID());
+            }
+            assertTrue(savedOrder.getState() instanceof NewOrderState, "Order should be in NEW state on creation");
+            assertEquals("T1", savedOrder.getTableNumber());
+            return savedOrder;
         });
 
+        // Act
         Order createdOrder = orderService.createOrder("T1");
 
+        // Assert
         assertNotNull(createdOrder);
         assertNotNull(createdOrder.getId());
         assertEquals("T1", createdOrder.getTableNumber());
-        // assertEquals("NEW", createdOrder.getStatus()); // Check initial status
+        assertTrue(createdOrder.getState() instanceof NewOrderState);
+        assertEquals("NEW", createdOrder.getStatus());
         assertTrue(createdOrder.getItems().isEmpty());
         assertEquals(0.0, createdOrder.getTotalPrice());
-        verify(orderRepository, times(1)).save(any(Order.class));
-        fail("Implementation needed. Ensure initial state is set correctly.");
+        verify(orderRepository, times(1)).save(any(Order.class)); // Verify save was called
     }
 
     @Test
     void testFindOrderById_Found() {
+        // Arrange: Mock repository returning the order
+        // Ensure state is hydrated when findById is called in service
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
-        Optional<Order> foundOrder = orderService.findOrderById(orderId);
+        // Act
+        Optional<Order> foundOrderOpt = orderService.findOrderById(orderId);
 
-        assertTrue(foundOrder.isPresent());
-        assertEquals(order, foundOrder.get());
+        // Assert
+        assertTrue(foundOrderOpt.isPresent());
+        Order foundOrder = foundOrderOpt.get();
+        assertEquals(order, foundOrder);
+        assertNotNull(foundOrder.getState()); // Check state was hydrated
+        assertTrue(foundOrder.getState() instanceof NewOrderState);
         verify(orderRepository, times(1)).findById(orderId);
     }
 
     @Test
     void testFindOrderById_NotFound() {
+        // Arrange: Mock repository returning empty
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 
-        Optional<Order> foundOrder = orderService.findOrderById(orderId);
+        // Act
+        Optional<Order> foundOrderOpt = orderService.findOrderById(orderId);
 
-        assertFalse(foundOrder.isPresent());
+        // Assert
+        assertFalse(foundOrderOpt.isPresent());
         verify(orderRepository, times(1)).findById(orderId);
     }
 
     @Test
     void testFindAllOrders() {
+        // Arrange
         List<Order> orders = new ArrayList<>();
+        Order order2 = new Order("T2");
+        order2.setState(new ProcessingOrderState(order2)); // Simulate different state
         orders.add(order);
-        orders.add(new Order("T2"));
-
+        orders.add(order2);
         when(orderRepository.findAll()).thenReturn(orders);
 
+        // Act
         List<Order> foundOrders = orderService.findAllOrders();
 
+        // Assert
         assertEquals(2, foundOrders.size());
         assertEquals(orders, foundOrders);
+        // Check states were hydrated
+        assertNotNull(foundOrders.get(0).getState());
+        assertNotNull(foundOrders.get(1).getState());
+        assertTrue(foundOrders.get(0).getState() instanceof NewOrderState);
+        assertTrue(foundOrders.get(1).getState() instanceof ProcessingOrderState);
         verify(orderRepository, times(1)).findAll();
     }
 
     @Test
     void testAddItemToOrder() {
-        // Assume OrderItem details (name, price) might be fetched from another service
-        // or passed directly.
-        // Let's assume they are passed in AddItemRequestDTO or similar
+        // Arrange
         String itemName = "Nasi Goreng";
         double itemPrice = 15000.0;
         int quantity = 1;
-
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        // Mock saving the updated order
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        // Mock save to return the modified order AND simulate OrderItem ID generation
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order orderToSave = invocation.getArgument(0);
+            // Simulate item ID generation if the item doesn't have one yet
+            orderToSave.getItems().stream()
+                .filter(item -> item.getId() == null)
+                .forEach(item -> item.setId(UUID.randomUUID())); // Assign a dummy ID
+            return orderToSave;
+        });
 
-        // Need a method like: Order addItemToOrder(UUID orderId, UUID menuItemId, String name, double price, int quantity)
-        // Order updatedOrder = orderService.addItemToOrder(orderId, menuItemId, itemName, itemPrice, quantity);
+        // Act
+        Order updatedOrder = orderService.addItemToOrder(orderId, menuItemId, itemName, itemPrice, quantity);
 
-        // assertNotNull(updatedOrder);
-        // assertEquals(1, updatedOrder.getItems().size());
-        // OrderItem addedItem = updatedOrder.getItems().get(0);
-        // assertEquals(menuItemId, addedItem.getMenuItemId());
-        // assertEquals(itemName, addedItem.getMenuItemName());
-        // assertEquals(itemPrice, addedItem.getPrice());
-        // assertEquals(quantity, addedItem.getQuantity());
-        // assertEquals(itemPrice * quantity, addedItem.getSubtotal());
-        // assertEquals(itemPrice * quantity, updatedOrder.getTotalPrice()); // Check total price update
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(orderRepository, times(1)).save(order);
-        fail("addItemToOrder method implementation needed in OrderService.");
+        // Assert
+        assertNotNull(updatedOrder);
+        assertEquals(1, updatedOrder.getItems().size());
+        OrderItem addedItem = updatedOrder.getItems().get(0);
+        assertNotNull(addedItem.getId()); // Should have an ID after being added/saved
+        assertEquals(menuItemId, addedItem.getMenuItemId());
+        assertEquals(itemName, addedItem.getMenuItemName());
+        assertEquals(itemPrice, addedItem.getPrice());
+        assertEquals(quantity, addedItem.getQuantity());
+        assertEquals(itemPrice * quantity, addedItem.getSubtotal());
+        assertEquals(itemPrice * quantity, updatedOrder.getTotalPrice()); // Check total price update
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order); // Verify save with the updated order
     }
 
     @Test
     void testAddItemToOrder_OrderNotFound() {
+        // Arrange
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 
-        // assertThrows(OrderNotFoundException.class, () -> {
-        //     orderService.addItemToOrder(orderId, menuItemId, "Test", 10.0, 1);
-        // });
-
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(orderRepository, never()).save(any(Order.class));
-        fail("addItemToOrder should handle OrderNotFoundException (or similar).");
+        // Act & Assert
+        assertThrows(OrderNotFoundException.class, () -> {
+            orderService.addItemToOrder(orderId, menuItemId, "Test", 10.0, 1);
+        });
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, never()).save(any(Order.class)); // Save should not be called
     }
 
-    // Add tests for updateItemQuantity, removeItemFromOrder
 
     @Test
     void testUpdateItemQuantity() {
-        // Setup: Add an item first
-        order.getItems().add(item);
-        order.calculateTotalPrice();
-        UUID orderItemId = item.getId();
+        // Arrange: Add an item first to the order object
+        order.addItem(item); // Add the item with ID orderItemId
+        assertEquals(1, order.getItems().size());
+        assertEquals(10.0, order.getTotalPrice());
+
         int newQuantity = 3;
+        double expectedSubtotal = item.getPrice() * newQuantity; // 10.0 * 3 = 30.0
+        double expectedTotal = expectedSubtotal;
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Order updatedOrder = orderService.updateItemQuantity(orderId, orderItemId, newQuantity);
+        // Act
+        Order updatedOrder = orderService.updateItemQuantity(orderId, orderItemId, newQuantity);
 
-        // assertNotNull(updatedOrder);
-        // assertEquals(1, updatedOrder.getItems().size());
-        // OrderItem updatedItem = updatedOrder.getItems().get(0);
-        // assertEquals(newQuantity, updatedItem.getQuantity());
-        // assertEquals(item.getPrice() * newQuantity, updatedItem.getSubtotal());
-        // assertEquals(item.getPrice() * newQuantity, updatedOrder.getTotalPrice()); // Check total price update
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(orderRepository, times(1)).save(order);
-        fail("updateItemQuantity method implementation needed.");
+        // Assert
+        assertNotNull(updatedOrder);
+        assertEquals(1, updatedOrder.getItems().size());
+        OrderItem updatedItem = updatedOrder.getItems().get(0);
+        assertEquals(orderItemId, updatedItem.getId());
+        assertEquals(newQuantity, updatedItem.getQuantity());
+        assertEquals(expectedSubtotal, updatedItem.getSubtotal());
+        assertEquals(expectedTotal, updatedOrder.getTotalPrice());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+     @Test
+    void testUpdateItemQuantity_ItemNotFound() {
+        // Arrange: Order exists but does not contain the item
+        UUID nonExistentItemId = UUID.randomUUID();
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order)); // Order is found
+        assertTrue(order.getItems().isEmpty()); // Ensure item is not in order
+
+        // Act & Assert
+        assertThrows(OrderItemNotFoundException.class, () -> {
+            orderService.updateItemQuantity(orderId, nonExistentItemId, 5);
+        });
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
      @Test
     void testRemoveItemFromOrder() {
-        // Setup: Add an item first
-        order.getItems().add(item);
-        order.calculateTotalPrice();
-        UUID orderItemId = item.getId();
+        // Arrange: Add item first
+        order.addItem(item);
+        assertEquals(1, order.getItems().size());
+        assertEquals(10.0, order.getTotalPrice());
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Order updatedOrder = orderService.removeItemFromOrder(orderId, orderItemId);
+        // Act
+        Order updatedOrder = orderService.removeItemFromOrder(orderId, orderItemId);
 
-        // assertNotNull(updatedOrder);
-        // assertTrue(updatedOrder.getItems().isEmpty());
-        // assertEquals(0.0, updatedOrder.getTotalPrice()); // Check total price update
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(orderRepository, times(1)).save(order);
-        fail("removeItemFromOrder method implementation needed.");
-    }
-
-
-    // Add tests for state transitions (confirm, cancel, complete)
-    // These tests should verify that the correct state methods are called
-    // And that the repository saves the updated state
-
-    @Test
-    void testConfirmOrder() {
-        // Mock the initial state and its behavior
-        OrderState initialState = mock(OrderState.class);
-        order.setState(initialState); // Manually set mock state
-
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-
-        // Assume confirmOrder delegates to the state object
-        // Order confirmedOrder = orderService.confirmOrder(orderId);
-
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(initialState, times(1)).confirmOrder(); // Verify state method called
-        // verify(orderRepository, times(1)).save(order); // Verify save is called after state change
-        // assertNotNull(confirmedOrder);
-        fail("confirmOrder method implementation needed, including state delegation and saving.");
-    }
-
-    @Test
-    void testCancelOrder() {
-        // Mock the current state
-        OrderState currentState = mock(OrderState.class);
-        order.setState(currentState);
-
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-
-        // Order cancelledOrder = orderService.cancelOrder(orderId);
-
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(currentState, times(1)).cancelOrder(); // Verify state method called
-        // verify(orderRepository, times(1)).save(order);
-        // assertNotNull(cancelledOrder);
-        fail("cancelOrder method implementation needed.");
-    }
-
-    @Test
-    void testCompleteOrder() {
-         // Mock the current state
-        OrderState currentState = mock(OrderState.class);
-        order.setState(currentState);
-
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-
-        // Order completedOrder = orderService.completeOrder(orderId);
-
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(currentState, times(1)).completeOrder(); // Verify state method called
-        // verify(orderRepository, times(1)).save(order);
-        // assertNotNull(completedOrder);
-        fail("completeOrder method implementation needed.");
+        // Assert
+        assertNotNull(updatedOrder);
+        assertTrue(updatedOrder.getItems().isEmpty());
+        assertEquals(0.0, updatedOrder.getTotalPrice());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order);
     }
 
      @Test
-    void testStateTransitionFailure() {
-        // Example: Trying to cancel an already completed order
-        OrderState completedState = mock(OrderState.class);
-        order.setState(completedState);
+    void testRemoveItemFromOrder_ItemNotFound() {
+        // Arrange: Order exists but item doesn't
+        UUID nonExistentItemId = UUID.randomUUID();
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        assertTrue(order.getItems().isEmpty());
 
-        // Simulate the state throwing an exception for an invalid transition
-        doThrow(new IllegalStateException("Cannot cancel a completed order")).when(completedState).cancelOrder();
+        // Act & Assert
+        assertThrows(OrderItemNotFoundException.class, () -> {
+            orderService.removeItemFromOrder(orderId, nonExistentItemId);
+        });
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, never()).save(any(Order.class));
+    }
 
+
+    // --- State Transition Tests --- //
+
+    @Test
+    void testConfirmOrder() {
+        // Arrange: Order is in NEW state
+        assertTrue(order.getState() instanceof NewOrderState);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Order confirmedOrder = orderService.confirmOrder(orderId);
+
+        // Assert
+        assertNotNull(confirmedOrder);
+        assertTrue(confirmedOrder.getState() instanceof ProcessingOrderState, "State should transition to Processing");
+        assertEquals("PROCESSING", confirmedOrder.getStatus());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order); // Verify save is called after state change
+    }
+
+    @Test
+    void testCancelOrder_FromNew() {
+        // Arrange: Order is NEW
+        assertTrue(order.getState() instanceof NewOrderState);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Order cancelledOrder = orderService.cancelOrder(orderId);
+
+        // Assert
+        assertNotNull(cancelledOrder);
+        assertTrue(cancelledOrder.getState() instanceof CancelledOrderState);
+        assertEquals("CANCELLED", cancelledOrder.getStatus());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+    @Test
+    void testCancelOrder_FromProcessing() {
+        // Arrange: Manually set state to Processing
+        order.setState(new ProcessingOrderState(order));
+        assertTrue(order.getState() instanceof ProcessingOrderState);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Order cancelledOrder = orderService.cancelOrder(orderId);
+
+        // Assert
+        assertNotNull(cancelledOrder);
+        assertTrue(cancelledOrder.getState() instanceof CancelledOrderState);
+        assertEquals("CANCELLED", cancelledOrder.getStatus());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+    @Test
+    void testCompleteOrder_FromProcessing() {
+        // Arrange: Manually set state to Processing
+         order.setState(new ProcessingOrderState(order));
+         assertTrue(order.getState() instanceof ProcessingOrderState);
+         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Order completedOrder = orderService.completeOrder(orderId);
+
+        // Assert
+        assertNotNull(completedOrder);
+        assertTrue(completedOrder.getState() instanceof CompletedOrderState);
+        assertEquals("COMPLETED", completedOrder.getStatus());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+     @Test
+    void testStateTransitionFailure_CancelCompletedOrder() {
+        // Arrange: Set state to Completed
+        order.setState(new CompletedOrderState(order));
+        assertTrue(order.getState() instanceof CompletedOrderState);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        // No need to mock save, as it shouldn't be called
+
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () -> {
+            orderService.cancelOrder(orderId);
+        }, "Should throw IllegalStateException when trying to cancel a completed order");
+
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, never()).save(any(Order.class)); // Should not save if transition failed
+        assertTrue(order.getState() instanceof CompletedOrderState); // State should remain Completed
+    }
+
+     @Test
+    void testStateTransitionFailure_ConfirmProcessingOrder() {
+        // Arrange: Set state to Processing
+        order.setState(new ProcessingOrderState(order));
+        assertTrue(order.getState() instanceof ProcessingOrderState);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
-        // assertThrows(IllegalStateException.class, () -> {
-        //     orderService.cancelOrder(orderId);
-        // });
-
-        // verify(orderRepository, times(1)).findById(orderId);
-        // verify(completedState, times(1)).cancelOrder();
-        // verify(orderRepository, never()).save(any(Order.class)); // Should not save if transition failed
-        fail("Need to test handling of invalid state transitions (e.g., exceptions).");
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () -> {
+            orderService.confirmOrder(orderId);
+        });
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, never()).save(any(Order.class));
+        assertTrue(order.getState() instanceof ProcessingOrderState); // State remains Processing
     }
 } 

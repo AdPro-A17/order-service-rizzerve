@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.orderservice.repository;
 
 import id.ac.ui.cs.advprog.orderservice.model.Order;
+import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,44 +15,70 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DataJpaTest // Configure H2, Hibernate, Spring Data, etc.
+@DataJpaTest
 class OrderRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
 
     @Autowired
-    private OrderRepository orderRepository; // Spring Boot will inject the repo implementation
+    private OrderRepository orderRepository;
 
     private Order order1;
     private Order order2;
     private UUID order1Id;
+    private UUID order2Id; // Add ID for order2
+    private UUID item1Id;
 
     @BeforeEach
     void setUp() {
-        // Ensure Order model exists with necessary annotations (@Entity, @Id, etc.)
+        // Create new entities without manual ID assignment
         order1 = new Order("T1");
-        // order1.setState(new NewOrderState(order1)); // Set initial state if required by model
-        // Add items if necessary for testing relationships
+        OrderItem item1 = new OrderItem(order1, UUID.randomUUID(), "Item A", 1, 10.0);
+        order1.addItem(item1);
 
         order2 = new Order("T2");
-        // order2.setState(new NewOrderState(order2));
+        OrderItem item2 = new OrderItem(order2, UUID.randomUUID(), "Item B", 2, 5.0);
+        order2.addItem(item2);
 
-        // Need to persist first to get generated ID
-        order1 = entityManager.persistFlushFind(order1);
-        order1Id = order1.getId();
-        entityManager.persist(order2);
-        entityManager.flush(); // Flush changes to H2 database
+        // Use persistAndFlush to save and get managed entities with generated IDs
+        order1 = entityManager.persistAndFlush(order1);
+        order1Id = order1.getId(); // Get the generated ID
+        item1Id = order1.getItems().get(0).getId(); // Get generated item ID
 
-        fail("Order model needs @Entity, @Id, potentially @OneToMany for items, and OrderRepository interface extending JpaRepository.");
+        order2 = entityManager.persistAndFlush(order2);
+        order2Id = order2.getId(); // Get the generated ID
     }
 
-    @Test
-    void whenFindById_thenReturnOrder() {
-        Optional<Order> found = orderRepository.findById(order1Id);
+     @AfterEach
+    void tearDown() {
+        // Clean up the database after each test
+        entityManager.clear();
+        orderRepository.deleteAll(); // Ensure clean slate
+        entityManager.flush();
+    }
 
-        assertTrue(found.isPresent());
-        assertEquals(order1.getTableNumber(), found.get().getTableNumber());
+
+    @Test
+    void whenFindById_thenReturnOrderWithItemsAndState() {
+        // Act: Fetch directly using the repository
+        Optional<Order> foundOptional = orderRepository.findById(order1Id);
+
+        // Assert
+        assertTrue(foundOptional.isPresent());
+        Order found = foundOptional.get();
+        entityManager.detach(found); // Detach before accessing lazy/transient fields outside transaction
+
+        assertEquals(order1Id, found.getId());
+        assertEquals("T1", found.getTableNumber());
+        assertEquals(1, found.getItems().size()); // Items should be loaded (EAGER fetch)
+        assertEquals(item1Id, found.getItems().get(0).getId());
+        assertEquals("Item A", found.getItems().get(0).getMenuItemName());
+        assertEquals(10.0, found.getTotalPrice());
+        assertEquals("NEW", found.getStatusString()); // Check persisted status string
+        // Note: Transient state `currentState` is not persisted and will be null here
+        // unless explicitly hydrated (which OrderRepository doesn't do).
+        // State testing should happen at the Service layer or Model layer.
     }
 
     @Test
@@ -65,43 +93,81 @@ class OrderRepositoryTest {
 
         assertNotNull(orders);
         assertEquals(2, orders.size()); // order1 and order2 were persisted
-        // Add more specific assertions if needed, e.g., check table numbers
         assertTrue(orders.stream().anyMatch(o -> o.getId().equals(order1Id)));
-        assertTrue(orders.stream().anyMatch(o -> o.getTableNumber().equals("T2")));
+        assertTrue(orders.stream().anyMatch(o -> o.getId().equals(order2Id)));
     }
 
     @Test
-    void whenSave_thenPersistOrder() {
+    void whenSave_thenPersistOrderAndItems() {
+        // Arrange
         Order newOrder = new Order("T3");
-        // newOrder.setState(new NewOrderState(newOrder));
+        OrderItem newItem = new OrderItem(newOrder, UUID.randomUUID(), "Item C", 3, 2.0);
+        newOrder.addItem(newItem);
+
+        // Act
         Order savedOrder = orderRepository.save(newOrder);
+        UUID newOrderId = savedOrder.getId();
+        entityManager.flush(); // Ensure saved to DB
+        entityManager.clear(); // Clear context to force reload
 
-        assertNotNull(savedOrder.getId());
-        assertEquals("T3", savedOrder.getTableNumber());
+        // Assert
+        assertNotNull(newOrderId);
 
-        // Verify it's actually in the DB
-        Order foundInDb = entityManager.find(Order.class, savedOrder.getId());
+        // Verify it's actually in the DB via findById
+        Order foundInDb = orderRepository.findById(newOrderId).orElseThrow();
         assertNotNull(foundInDb);
+        assertEquals(newOrderId, foundInDb.getId());
         assertEquals("T3", foundInDb.getTableNumber());
+        assertEquals(6.0, foundInDb.getTotalPrice());
+        assertEquals("NEW", foundInDb.getStatusString());
+        assertEquals(1, foundInDb.getItems().size());
+        assertEquals("Item C", foundInDb.getItems().get(0).getMenuItemName());
     }
 
      @Test
-    void testDeleteOrder() {
-        assertTrue(orderRepository.findById(order1Id).isPresent()); // Ensure it exists first
+    void testUpdateOrderState() {
+        // Arrange: Fetch, modify state (only statusString matters for repo test), save
+        Order foundOrder = orderRepository.findById(order1Id).orElseThrow();
+        // Directly modify the persisted status string for repo test
+        foundOrder.setStatusString("PROCESSING");
 
-        orderRepository.deleteById(order1Id);
-        entityManager.flush(); // Ensure delete is processed
+        // Act
+        orderRepository.save(foundOrder);
+        entityManager.flush();
+        entityManager.clear();
 
-        assertFalse(orderRepository.findById(order1Id).isPresent());
+        // Assert: Reload and check the persisted string
+        Order reloadedOrder = orderRepository.findById(order1Id).orElseThrow();
+        assertEquals("PROCESSING", reloadedOrder.getStatusString());
     }
 
-    // Add tests for any custom query methods defined in OrderRepository
-    // Example: findByStatus, findByTableNumber
+     @Test
+    void testDeleteOrderCascadesToItems() {
+        // Arrange: Ensure order and potentially item exist
+        assertTrue(orderRepository.findById(order1Id).isPresent());
+        // Need item ID that was persisted
+        OrderItem itemInOrder1 = entityManager.find(Order.class, order1Id).getItems().get(0);
+        UUID persistedItem1Id = itemInOrder1.getId();
+        assertNotNull(entityManager.find(OrderItem.class, persistedItem1Id));
+
+        // Act
+        orderRepository.deleteById(order1Id);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Assert
+        assertFalse(orderRepository.findById(order1Id).isPresent());
+        // Verify item is also deleted due to CascadeType.ALL and orphanRemoval=true
+        assertNull(entityManager.find(OrderItem.class, persistedItem1Id)); // Item should be gone
+    }
+
+    // Example: findByTableNumber test (if method was added to repository)
     // @Test
     // void whenFindByTableNumber_thenReturnCorrectOrders() {
+    //     // Define the method in OrderRepository first:
+    //     // List<Order> findByTableNumber(String tableNumber);
     //     List<Order> found = orderRepository.findByTableNumber("T1");
     //     assertEquals(1, found.size());
     //     assertEquals(order1Id, found.get(0).getId());
-    //     fail("findByTableNumber method needs to be defined in OrderRepository.");
     // }
 } 
