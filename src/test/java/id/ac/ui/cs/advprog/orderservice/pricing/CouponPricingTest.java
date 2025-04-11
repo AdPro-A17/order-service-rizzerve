@@ -7,7 +7,10 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CouponPricingTest {
@@ -44,52 +47,27 @@ class CouponPricingTest {
         checkout.setTotalPrice(60000.0);
     }
 
-    @Test
-    void calculateFinalPrice_WithValidSAVE10Coupon_ShouldApply10PercentDiscount() {
-        checkout.setCouponCode("SAVE10");
+    @ParameterizedTest
+    @CsvSource({
+            "SAVE10, 6000.0, 54000.0",
+            "SAVE20, 12000.0, 48000.0",
+            "HALF, 30000.0, 30000.0"
+    })
+    void calculateFinalPrice_WithValidCoupon_ShouldApplyCorrectDiscount(
+            String couponCode, double expectedDiscountAmount, double expectedFinalPrice) {
+        checkout.setCouponCode(couponCode);
         couponPricing.calculateFinalPrice(checkout);
-        assertEquals(6000.0, checkout.getDiscountAmount());
-        assertEquals(54000.0, checkout.getFinalPrice());
+        assertEquals(expectedDiscountAmount, checkout.getDiscountAmount());
+        assertEquals(expectedFinalPrice, checkout.getFinalPrice());
     }
 
-    @Test
-    void calculateFinalPrice_WithValidSAVE20Coupon_ShouldApply20PercentDiscount() {
-        checkout.setCouponCode("SAVE20");
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"INVALID", "WRONGCODE", "EXPIRED"})
+    void calculateFinalPrice_WithInvalidOrEmptyCoupon_ShouldNotApplyDiscount(String couponCode) {
+        checkout.setCouponCode(couponCode);
         couponPricing.calculateFinalPrice(checkout);
-        assertEquals(12000.0, checkout.getDiscountAmount());
-        assertEquals(48000.0, checkout.getFinalPrice());
-    }
 
-    @Test
-    void calculateFinalPrice_WithValidHALFCoupon_ShouldApply50PercentDiscount() {
-        checkout.setCouponCode("HALF");
-        couponPricing.calculateFinalPrice(checkout);
-        assertEquals(30000.0, checkout.getDiscountAmount());
-        assertEquals(30000.0, checkout.getFinalPrice());
-    }
-
-    @Test
-    void calculateFinalPrice_WithInvalidCoupon_ShouldNotApplyDiscount() {
-        checkout.setCouponCode("INVALID");
-        couponPricing.calculateFinalPrice(checkout);
-        assertEquals(0.0, checkout.getDiscountAmount());
-        assertEquals(60000.0, checkout.getFinalPrice());
-        assertEquals(checkout.getTotalPrice(), checkout.getFinalPrice());
-    }
-
-    @Test
-    void calculateFinalPrice_WithNullCoupon_ShouldNotApplyDiscount() {
-        checkout.setCouponCode(null);
-        couponPricing.calculateFinalPrice(checkout);
-        assertEquals(0.0, checkout.getDiscountAmount());
-        assertEquals(60000.0, checkout.getFinalPrice());
-        assertEquals(checkout.getTotalPrice(), checkout.getFinalPrice());
-    }
-
-    @Test
-    void calculateFinalPrice_WithEmptyCoupon_ShouldNotApplyDiscount() {
-        checkout.setCouponCode("");
-        couponPricing.calculateFinalPrice(checkout);
         assertEquals(0.0, checkout.getDiscountAmount());
         assertEquals(60000.0, checkout.getFinalPrice());
         assertEquals(checkout.getTotalPrice(), checkout.getFinalPrice());
