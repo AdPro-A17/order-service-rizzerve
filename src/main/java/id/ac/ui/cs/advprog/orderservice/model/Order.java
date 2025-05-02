@@ -140,7 +140,17 @@ public class Order {
     public int hashCode() {
         return 31;
     }
-
+    @Override
+    public String toString() {
+        return "Order{" +
+                "id=" + id +
+                ", tableNumber='" + tableNumber + '\'' +
+                ", items=" + items +
+                ", totalPrice=" + totalPrice +
+                ", statusString='" + statusString + '\'' +
+                ", currentState=" + currentState +
+                '}';
+    }
 }
 
 // Simple factory to re-create state objects from stored string status
