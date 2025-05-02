@@ -83,7 +83,9 @@ public class Order {
 
     // Method to calculate the total price based on items
     public void calculateTotalPrice() {
+        // For safety, ensure no null items are considered
         this.totalPrice = items.stream()
+                .filter(item -> item != null)
                 .mapToDouble(OrderItem::getSubtotal)
                 .sum();
     }
