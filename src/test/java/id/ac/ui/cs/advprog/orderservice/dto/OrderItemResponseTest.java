@@ -1,4 +1,4 @@
-package id.ac.ui.cs.advprog.orderservice.model;
+package id.ac.ui.cs.advprog.orderservice.dto;
 
 import org.junit.jupiter.api.Test;
 
@@ -7,21 +7,19 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class OrderItemTest {
+class OrderItemResponseTest {
 
     @Test
-    void builderShouldCreateOrderItemWithCorrectValues() {
+    void builderShouldCreateResponseWithCorrectValues() {
         UUID id = UUID.randomUUID();
-        Order order = new Order();
         UUID menuItemId = UUID.randomUUID();
         String menuItemName = "Test Item";
         BigDecimal pricePerItem = new BigDecimal("10000");
         int quantity = 2;
         BigDecimal subtotal = new BigDecimal("20000");
 
-        OrderItem orderItem = OrderItem.builder()
+        OrderItemResponse response = OrderItemResponse.builder()
                 .id(id)
-                .order(order)
                 .menuItemId(menuItemId)
                 .menuItemName(menuItemName)
                 .pricePerItem(pricePerItem)
@@ -29,12 +27,11 @@ class OrderItemTest {
                 .subtotal(subtotal)
                 .build();
 
-        assertEquals(id, orderItem.getId());
-        assertEquals(order, orderItem.getOrder());
-        assertEquals(menuItemId, orderItem.getMenuItemId());
-        assertEquals(menuItemName, orderItem.getMenuItemName());
-        assertEquals(pricePerItem, orderItem.getPricePerItem());
-        assertEquals(quantity, orderItem.getQuantity());
-        assertEquals(subtotal, orderItem.getSubtotal());
+        assertEquals(id, response.getId());
+        assertEquals(menuItemId, response.getMenuItemId());
+        assertEquals(menuItemName, response.getMenuItemName());
+        assertEquals(pricePerItem, response.getPricePerItem());
+        assertEquals(quantity, response.getQuantity());
+        assertEquals(subtotal, response.getSubtotal());
     }
 }

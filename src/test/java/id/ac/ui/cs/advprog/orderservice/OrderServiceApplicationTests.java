@@ -2,20 +2,20 @@ package id.ac.ui.cs.advprog.orderservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-class OrderServiceApplicationTests {
-
-    @Autowired
-    private ApplicationContext applicationContext;
+class OrderServiceApplicationTest {
 
     @Test
-    void contextLoads() {
+    void contextLoads(ApplicationContext context) {
+        assertThat(context).isNotNull();
+    }
+
+    @Test
+    void main_ShouldStartApplication() {
         OrderServiceApplication.main(new String[] {});
-        assertNotNull(applicationContext);
     }
 }
