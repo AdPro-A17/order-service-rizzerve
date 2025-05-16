@@ -78,6 +78,6 @@ Pada resiko “Bentrokan Saat Booking Meja”, banyak pengguna bisa pesan meja b
 
 
 - Component Diagram - (Checkout Service Muhammad Afwan Hafizh - 2306208855)
-![Component Diagram](images/rizzerve-a17-order-service-component-diagram.png)
+![Component Diagram](images/rizzerve-a17-checkout-service-component-diagram.png)
 - Code Diagram - (Checkout Service Muhammad Afwan Hafizh - 2306208855)
-![Code Diagram](images/rizzerve-a17-order-service-code-diagram.png)
+![Code Diagram](images/rizzerve-a17-checkout-service-code-diagram.png)
