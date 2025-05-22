@@ -9,10 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.security.Key;
-import java.util.UUID;
-import java.util.function.Function;
+import java.util.Date;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.function.Function;
 
 @Service
 public class JwtService {
@@ -20,44 +19,63 @@ public class JwtService {
     // For tests, a dummy secret is provided in src/test/resources/application.properties.
     // It's crucial that the production secret is strong and kept confidential.
     @Value("${jwt.secret}")
-    private String SECRET_KEY;
+    private String secretKey;
 
     public String extractUsername(String token) {
-        // Not implemented yet - for RED phase testing
-        return null;
+        return extractClaim(token, Claims::getSubject);
     }
 
-    public UUID extractUserId(String token) {
-        String userId = extractClaim(token, claims -> claims.get("userId", String.class));
-        return userId != null ? UUID.fromString(userId) : null;
-    }
-
-    @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
-        // Not implemented yet - for RED phase testing
-        return new ArrayList<>();
+        String role = extractClaim(token, claims -> claims.get("role", String.class));
+        if (role != null) {
+            return List.of("ROLE_" + role);
+        }
+        return List.of();
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+    public String extractAdminId(String token) {
+        return extractClaim(token, claims -> claims.get("adminId", String.class));
+    }
+
+    public boolean isTokenValid(String token, String username) {
+        final String extractedUsername = extractUsername(token);
+        return extractedUsername != null && extractedUsername.equals(username) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        Date expiration = extractExpiration(token);
+        return expiration != null && expiration.before(new Date());
+    }
+
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
+        if (claims == null) {
+            return null;
+        }
         return claimsResolver.apply(claims);
     }
 
     private Claims extractAllClaims(String token) {
-        // TODO: Review JWT parsing and validation logic for security best practices.
-        // Consider adding more robust error handling for malformed or expired tokens.
-        return Jwts
-                .parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        try {
+            return Jwts
+                    .parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private Key getSigningKey() {
         // TODO: Ensure the secret key is sufficiently long and complex for SHA256.
         // Consider externalizing secret management (e.g., using environment variables or a secrets manager) for production.
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 

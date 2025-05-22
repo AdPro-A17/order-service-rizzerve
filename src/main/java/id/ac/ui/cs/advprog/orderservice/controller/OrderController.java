@@ -25,12 +25,14 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    // Customer creates order by selecting table
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody CreateOrderRequest request) {
         Order order = orderService.createOrder(request.getTableNumber());
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToOrderResponse(order));
     }
 
+    // Customer can view their order
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID orderId) {
         return orderService.findOrderById(orderId)
@@ -38,6 +40,7 @@ public class OrderController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // Admin can view all orders (restaurant dashboard)
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
@@ -47,6 +50,7 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
+    // Customer adds items to order (menu selection)
     @PostMapping("/{orderId}/items")
     public ResponseEntity<OrderResponse> addItemToOrder(
             @PathVariable UUID orderId,
@@ -65,6 +69,7 @@ public class OrderController {
         }
     }
 
+    // Customer can update item quantities
     @PutMapping("/{orderId}/items/{itemId}")
     public ResponseEntity<OrderResponse> updateItemQuantity(
             @PathVariable UUID orderId,
@@ -78,6 +83,7 @@ public class OrderController {
         }
     }
 
+    // Only admin can remove items from orders
     @DeleteMapping("/{orderId}/items/{itemId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> removeItemFromOrder(
@@ -91,8 +97,8 @@ public class OrderController {
         }
     }
 
+    // Customer can confirm order (checkout)
     @PostMapping("/{orderId}/confirm")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> confirmOrder(@PathVariable UUID orderId) {
         try {
             Order updatedOrder = orderService.confirmOrder(orderId);
@@ -104,6 +110,7 @@ public class OrderController {
         }
     }
 
+    // Only admin can mark orders as complete
     @PostMapping("/{orderId}/complete")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {

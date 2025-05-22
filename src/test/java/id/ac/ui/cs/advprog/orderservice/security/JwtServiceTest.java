@@ -1,12 +1,17 @@
 package id.ac.ui.cs.advprog.orderservice.security;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.*;
+import java.security.Key;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,116 +19,138 @@ public class JwtServiceTest {
 
     private JwtService jwtService;
     private final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    private Key signingKey;
 
     @BeforeEach
     void setUp() {
         jwtService = new JwtService();
-        // Set the secret key for testing (this will fail in RED phase because the field doesn't exist yet)
-        // ReflectionTestUtils.setField(jwtService, "SECRET_KEY", SECRET_KEY);
+        ReflectionTestUtils.setField(jwtService, "secretKey", SECRET_KEY);
+        
+        byte[] keyBytes = java.util.Base64.getDecoder().decode(SECRET_KEY);
+        signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     @Test
     void testExtractUsername() {
         // Arrange
-        String token = "sample.jwt.token";
+        String token = generateValidToken("admin", null);
         
         // Act
         String extractedUsername = jwtService.extractUsername(token);
         
-        // Assert - This will pass in RED phase because we return null
-        assertNull(extractedUsername);
+        // Assert - GREEN phase: should extract username correctly
+        assertEquals("admin", extractedUsername);
     }
 
     @Test
     void testExtractRoles() {
         // Arrange
-        String token = "sample.jwt.token";
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", "ADMIN");
+        String token = generateValidToken("admin", claims);
         
         // Act
         List<String> roles = jwtService.extractRoles(token);
         
-        // Assert - This will pass in RED phase because we return empty list
+        // Assert - GREEN phase: should extract roles correctly
         assertNotNull(roles);
-        assertEquals(0, roles.size());
+        assertEquals(1, roles.size());
+        assertEquals("ROLE_ADMIN", roles.get(0));
     }
 
     @Test
-    void testValidateToken_withValidToken() {
+    void testExtractAdminId() {
         // Arrange
-        String token = "sample.jwt.token";
-        UserDetails userDetails = User.withUsername("admin")
-            .password("password")
-            .roles("ADMIN")
-            .build();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("adminId", "123e4567-e89b-12d3-a456-426614174000");
+        String token = generateValidToken("admin", claims);
         
         // Act
-        boolean isValid = jwtService.validateToken(token, userDetails);
+        String adminId = jwtService.extractAdminId(token);
         
-        // Assert - This will pass in RED phase because we return false
+        // Assert
+        assertEquals("123e4567-e89b-12d3-a456-426614174000", adminId);
+    }
+
+    @Test
+    void testIsTokenValid_withValidToken() {
+        // Arrange
+        String token = generateValidToken("admin", null);
+        
+        // Act
+        boolean isValid = jwtService.isTokenValid(token, "admin");
+        
+        // Assert - GREEN phase: should validate correctly
+        assertTrue(isValid);
+    }
+
+    @Test
+    void testIsTokenValid_withWrongUsername() {
+        // Arrange
+        String token = generateValidToken("admin", null);
+        
+        // Act
+        boolean isValid = jwtService.isTokenValid(token, "wronguser");
+        
+        // Assert
         assertFalse(isValid);
     }
 
     @Test
-    void testValidateToken_withInvalidUsername() {
+    void testIsTokenValid_withExpiredToken() {
         // Arrange
-        String token = "sample.jwt.token";
-        UserDetails userDetails = User.withUsername("wronguser")
-            .password("password")
-            .roles("ADMIN")
-            .build();
+        String token = generateExpiredToken("admin");
         
         // Act
-        boolean isValid = jwtService.validateToken(token, userDetails);
+        boolean isValid = jwtService.isTokenValid(token, "admin");
         
-        // Assert - This will pass in RED phase because we return false
+        // Assert
         assertFalse(isValid);
     }
 
     @Test
-    void testValidateToken_withExpiredToken() {
+    void testExtractRoles_withNullRole() {
         // Arrange
-        String token = "expired.jwt.token";
-        UserDetails userDetails = User.withUsername("admin")
-            .password("password")
-            .roles("ADMIN")
-            .build();
+        String token = generateValidToken("admin", null); // No role claim
         
         // Act
-        boolean isValid = jwtService.validateToken(token, userDetails);
+        List<String> roles = jwtService.extractRoles(token);
         
-        // Assert - This will pass in RED phase because we return false
-        assertFalse(isValid);
-    }
-
-    // These tests will fail in RED phase because the methods don't exist yet
-    // They will be implemented in GREEN phase
-    
-    @Test
-    void testExtractUsernameFromRealToken_shouldFailInRedPhase() {
-        // This test expects actual JWT functionality which doesn't exist in RED phase
-        String realToken = generateSampleToken();
-        
-        // This should return null in RED phase, but will work in GREEN phase
-        String username = jwtService.extractUsername(realToken);
-        assertNull(username); // RED phase expectation
+        // Assert
+        assertNotNull(roles);
+        assertTrue(roles.isEmpty());
     }
 
     @Test
-    void testExtractRolesFromRealToken_shouldFailInRedPhase() {
-        // This test expects actual JWT functionality which doesn't exist in RED phase
-        String realToken = generateSampleTokenWithRoles();
+    void testExtractUsername_withInvalidToken() {
+        // Arrange
+        String invalidToken = "invalid.token.here";
         
-        // This should return empty list in RED phase, but will work in GREEN phase
-        List<String> roles = jwtService.extractRoles(realToken);
-        assertTrue(roles.isEmpty()); // RED phase expectation
+        // Act
+        String username = jwtService.extractUsername(invalidToken);
+        
+        // Assert - Should return null for invalid token
+        assertNull(username);
     }
 
-    // Helper method to simulate token generation (will be properly implemented in GREEN phase)
-    private String generateSampleToken() {
-        return "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.signature";
+    // Helper methods for token generation
+    private String generateValidToken(String username, Map<String, Object> extraClaims) {
+        Map<String, Object> claims = extraClaims != null ? extraClaims : new HashMap<>();
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(username)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hour
+                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .compact();
     }
 
-    private String generateSampleTokenWithRoles() {
-        return "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGVzIjpbIlJPTEVfQURNSU4iXSwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MDAwMDM2MDB9.signature";
+    private String generateExpiredToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date(System.currentTimeMillis() - 1000 * 60 * 60 * 2)) // 2 hours ago
+                .setExpiration(new Date(System.currentTimeMillis() - 1000 * 60 * 60)) // 1 hour ago
+                .signWith(signingKey, SignatureAlgorithm.HS256)
+                .compact();
     }
 } 

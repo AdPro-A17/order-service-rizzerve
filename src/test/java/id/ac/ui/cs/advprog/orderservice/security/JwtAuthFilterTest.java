@@ -14,8 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 
 import jakarta.servlet.ServletException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -24,16 +23,13 @@ public class JwtAuthFilterTest {
 
     @Mock
     private JwtService jwtService;
-    
-    @Mock
-    private UserDetailsService userDetailsService;
 
     private JwtAuthFilter jwtAuthFilter;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        jwtAuthFilter = new JwtAuthFilter(jwtService, userDetailsService);
+        jwtAuthFilter = new JwtAuthFilter(jwtService);
         SecurityContextHolder.clearContext();
     }
 
@@ -47,24 +43,19 @@ public class JwtAuthFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
         
-        UserDetails userDetails = User.withUsername("admin")
-                .password("password")
-                .roles("ADMIN")
-                .build();
-        
         when(jwtService.extractUsername(token)).thenReturn("admin");
-        when(userDetailsService.loadUserByUsername("admin")).thenReturn(userDetails);
-        when(jwtService.validateToken(token, userDetails)).thenReturn(true);
+        when(jwtService.isTokenValid(token, "admin")).thenReturn(true);
+        when(jwtService.extractRoles(token)).thenReturn(List.of("ROLE_ADMIN"));
         
         // Act
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
         
-        // Assert
-        // In RED phase, this will fail because authentication is not set
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
-        verify(jwtService, never()).extractUsername(token);
-        verify(userDetailsService, never()).loadUserByUsername("admin");
-        verify(jwtService, never()).validateToken(token, userDetails);
+        // Assert - GREEN phase: authentication should be set
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals("admin", SecurityContextHolder.getContext().getAuthentication().getName());
+        verify(jwtService).extractUsername(token);
+        verify(jwtService).isTokenValid(token, "admin");
+        verify(jwtService).extractRoles(token);
     }
 
     @Test
@@ -77,20 +68,17 @@ public class JwtAuthFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
         
-        UserDetails userDetails = User.withUsername("admin")
-                .password("password")
-                .roles("ADMIN")
-                .build();
-        
         when(jwtService.extractUsername(token)).thenReturn("admin");
-        when(userDetailsService.loadUserByUsername("admin")).thenReturn(userDetails);
-        when(jwtService.validateToken(token, userDetails)).thenReturn(false);
+        when(jwtService.isTokenValid(token, "admin")).thenReturn(false);
         
         // Act
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
         
-        // Assert
+        // Assert - Invalid token should not set authentication
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(jwtService).extractUsername(token);
+        verify(jwtService).isTokenValid(token, "admin");
+        verify(jwtService, never()).extractRoles(token);
     }
 
     @Test
