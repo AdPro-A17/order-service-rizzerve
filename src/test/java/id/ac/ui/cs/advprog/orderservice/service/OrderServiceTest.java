@@ -1,10 +1,12 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
+import id.ac.ui.cs.advprog.orderservice.dto.OrderDetailsEvent;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import id.ac.ui.cs.advprog.orderservice.model.state.*;
+import id.ac.ui.cs.advprog.orderservice.observer.OrderEventPublisher;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private OrderEventPublisher orderEventPublisher;
 
     // No need to mock states if we test interactions via the Order object
 
@@ -63,12 +68,15 @@ class OrderServiceTest {
             Order savedOrder = invocation.getArgument(0);
             // Simulate ID generation if not done in constructor
             if (savedOrder.getId() == null) {
-                 savedOrder.setId(UUID.randomUUID());
+                savedOrder.setId(UUID.randomUUID());
             }
             assertTrue(savedOrder.getState() instanceof NewOrderState, "Order should be in NEW state on creation");
             assertEquals("T1", savedOrder.getTableNumber());
             return savedOrder;
         });
+        // Kita tidak perlu memverifikasi isi event secara detail di sini, cukup bahwa publish dipanggil
+        doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
+
 
         // Act
         Order createdOrder = orderService.createOrder("T1");
@@ -81,7 +89,8 @@ class OrderServiceTest {
         assertEquals("NEW", createdOrder.getStatus());
         assertTrue(createdOrder.getItems().isEmpty());
         assertEquals(0.0, createdOrder.getTotalPrice());
-        verify(orderRepository, times(1)).save(any(Order.class)); // Verify save was called
+        verify(orderRepository, times(1)).save(any(Order.class));
+        verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class)); // Verifikasi publish dipanggil
     }
 
     @Test
@@ -146,15 +155,14 @@ class OrderServiceTest {
         double itemPrice = 15000.0;
         int quantity = 1;
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        // Mock save to return the modified order AND simulate OrderItem ID generation
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order orderToSave = invocation.getArgument(0);
-            // Simulate item ID generation if the item doesn't have one yet
             orderToSave.getItems().stream()
-                .filter(item -> item.getId() == null)
-                .forEach(item -> item.setId(UUID.randomUUID())); // Assign a dummy ID
+                    .filter(item -> item.getId() == null)
+                    .forEach(item -> item.setId(UUID.randomUUID()));
             return orderToSave;
         });
+        doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
 
         // Act
         Order updatedOrder = orderService.addItemToOrder(orderId, menuItemId, itemName, itemPrice, quantity);
@@ -163,15 +171,16 @@ class OrderServiceTest {
         assertNotNull(updatedOrder);
         assertEquals(1, updatedOrder.getItems().size());
         OrderItem addedItem = updatedOrder.getItems().get(0);
-        assertNotNull(addedItem.getId()); // Should have an ID after being added/saved
+        assertNotNull(addedItem.getId());
         assertEquals(menuItemId, addedItem.getMenuItemId());
         assertEquals(itemName, addedItem.getMenuItemName());
         assertEquals(itemPrice, addedItem.getPrice());
         assertEquals(quantity, addedItem.getQuantity());
         assertEquals(itemPrice * quantity, addedItem.getSubtotal());
-        assertEquals(itemPrice * quantity, updatedOrder.getTotalPrice()); // Check total price update
+        assertEquals(itemPrice * quantity, updatedOrder.getTotalPrice());
         verify(orderRepository, times(1)).findById(orderId);
-        verify(orderRepository, times(1)).save(order); // Verify save with the updated order
+        verify(orderRepository, times(1)).save(order);
+        verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
     @Test
@@ -184,23 +193,26 @@ class OrderServiceTest {
             orderService.addItemToOrder(orderId, menuItemId, "Test", 10.0, 1);
         });
         verify(orderRepository, times(1)).findById(orderId);
-        verify(orderRepository, never()).save(any(Order.class)); // Save should not be called
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderEventPublisher, never()).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
 
     @Test
     void testUpdateItemQuantity() {
         // Arrange: Add an item first to the order object
-        order.addItem(item); // Add the item with ID orderItemId
+        order.addItem(item);
         assertEquals(1, order.getItems().size());
         assertEquals(10.0, order.getTotalPrice());
 
         int newQuantity = 3;
-        double expectedSubtotal = item.getPrice() * newQuantity; // 10.0 * 3 = 30.0
+        double expectedSubtotal = item.getPrice() * newQuantity;
         double expectedTotal = expectedSubtotal;
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
+
 
         // Act
         Order updatedOrder = orderService.updateItemQuantity(orderId, orderItemId, newQuantity);
@@ -215,14 +227,15 @@ class OrderServiceTest {
         assertEquals(expectedTotal, updatedOrder.getTotalPrice());
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
+        verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
-     @Test
+    @Test
     void testUpdateItemQuantity_ItemNotFound() {
         // Arrange: Order exists but does not contain the item
         UUID nonExistentItemId = UUID.randomUUID();
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order)); // Order is found
-        assertTrue(order.getItems().isEmpty()); // Ensure item is not in order
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        assertTrue(order.getItems().isEmpty());
 
         // Act & Assert
         assertThrows(OrderItemNotFoundException.class, () -> {
@@ -230,9 +243,10 @@ class OrderServiceTest {
         });
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, never()).save(any(Order.class));
+        verify(orderEventPublisher, never()).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
-     @Test
+    @Test
     void testRemoveItemFromOrder() {
         // Arrange: Add item first
         order.addItem(item);
@@ -241,6 +255,7 @@ class OrderServiceTest {
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
 
         // Act
         Order updatedOrder = orderService.removeItemFromOrder(orderId, orderItemId);
@@ -251,9 +266,10 @@ class OrderServiceTest {
         assertEquals(0.0, updatedOrder.getTotalPrice());
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
+        verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
-     @Test
+    @Test
     void testRemoveItemFromOrder_ItemNotFound() {
         // Arrange: Order exists but item doesn't
         UUID nonExistentItemId = UUID.randomUUID();
@@ -266,6 +282,7 @@ class OrderServiceTest {
         });
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, never()).save(any(Order.class));
+        verify(orderEventPublisher, never()).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
 
@@ -277,6 +294,7 @@ class OrderServiceTest {
         assertTrue(order.getState() instanceof NewOrderState);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
 
         // Act
         Order confirmedOrder = orderService.confirmOrder(orderId);
@@ -286,16 +304,18 @@ class OrderServiceTest {
         assertTrue(confirmedOrder.getState() instanceof ProcessingOrderState, "State should transition to Processing");
         assertEquals("PROCESSING", confirmedOrder.getStatus());
         verify(orderRepository, times(1)).findById(orderId);
-        verify(orderRepository, times(1)).save(order); // Verify save is called after state change
+        verify(orderRepository, times(1)).save(order);
+        verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
     @Test
     void testCompleteOrder_FromProcessing() {
         // Arrange: Manually set state to Processing
-         order.setState(new ProcessingOrderState(order));
-         assertTrue(order.getState() instanceof ProcessingOrderState);
-         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        order.setState(new ProcessingOrderState(order));
+        assertTrue(order.getState() instanceof ProcessingOrderState);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
 
         // Act
         Order completedOrder = orderService.completeOrder(orderId);
@@ -306,14 +326,16 @@ class OrderServiceTest {
         assertEquals("COMPLETED", completedOrder.getStatus());
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
+        verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
     }
 
-     @Test
+    @Test
     void testStateTransitionFailure_ConfirmProcessingOrder() {
         // Arrange: Set state to Processing
         order.setState(new ProcessingOrderState(order));
         assertTrue(order.getState() instanceof ProcessingOrderState);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        // No save or publish should happen
 
         // Act & Assert
         assertThrows(IllegalStateException.class, () -> {
@@ -321,6 +343,7 @@ class OrderServiceTest {
         });
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, never()).save(any(Order.class));
+        verify(orderEventPublisher, never()).publishOrderEvent(any(OrderDetailsEvent.class)); // Verify publish is not called
         assertTrue(order.getState() instanceof ProcessingOrderState); // State remains Processing
     }
-} 
+}
