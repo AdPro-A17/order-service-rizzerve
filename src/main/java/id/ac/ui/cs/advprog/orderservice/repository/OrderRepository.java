@@ -9,13 +9,7 @@ import java.util.List; // Add if using findByTableNumber or similar list-returni
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
-    // Spring Data JPA will automatically provide implementations for common methods
-    // like save(), findById(), findAll(), deleteById()
-
-    // Define custom query methods if needed
-    // Example: Find all orders for a specific table number
-    // List<Order> findByTableNumber(String tableNumber);
-
-    // Example: Find all orders with a specific status string
-    // List<Order> findByStatusString(String statusString);
+    List<Order> findByTableNumber(String tableNumber);
+    List<Order> findByStatusString(String statusString);
+    List<Order> findByTableNumberAndStatusStringNotIn(String tableNumber, List<String> statuses);
 } 

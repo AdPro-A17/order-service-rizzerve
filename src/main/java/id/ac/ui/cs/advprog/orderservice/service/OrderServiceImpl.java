@@ -1,7 +1,10 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
+import id.ac.ui.cs.advprog.orderservice.dto.OrderDetailsEvent;
+import id.ac.ui.cs.advprog.orderservice.dto.OrderItemSummaryDto;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
+import id.ac.ui.cs.advprog.orderservice.observer.OrderEventPublisher;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
@@ -9,40 +12,66 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderEventPublisher orderEventPublisher;
 
     @Autowired
-    public OrderServiceImpl(OrderRepository orderRepository) {
+    public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher) {
         this.orderRepository = orderRepository;
+        this.orderEventPublisher = orderEventPublisher;
+    }
+
+    private OrderDetailsEvent mapToOrderDetailsEvent(Order order, OrderDetailsEvent.EventType eventType) {
+        List<OrderItemSummaryDto> itemSummaries = order.getItems().stream()
+                .map(item -> OrderItemSummaryDto.builder()
+                        .menuItemId(item.getMenuItemId())
+                        .menuItemName(item.getMenuItemName())
+                        .quantity(item.getQuantity())
+                        .price(item.getPrice())
+                        .subtotal(item.getSubtotal())
+                        .build())
+                .collect(Collectors.toList());
+
+        return OrderDetailsEvent.builder()
+                .eventType(eventType)
+                .orderId(order.getId())
+                .tableNumber(order.getTableNumber())
+                .orderStatus(order.getStatus())
+                .totalPrice(order.getTotalPrice())
+                .items(itemSummaries)
+                .occurredAt(Instant.now())
+                .build();
     }
 
     @Override
     @Transactional
     public Order createOrder(String tableNumber) {
         Order order = new Order(tableNumber);
-        // Initial state (NEW) is set in Order constructor
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(savedOrder, OrderDetailsEvent.EventType.CREATED));
+        return savedOrder;
     }
 
     @Override
     public Optional<Order> findOrderById(UUID orderId) {
-        // Note: .getState() call ensures state is hydrated after loading
         Optional<Order> order = orderRepository.findById(orderId);
-        order.ifPresent(Order::getState); // Initialize transient state
+        order.ifPresent(Order::getState);
         return order;
     }
 
     @Override
     public List<Order> findAllOrders() {
         List<Order> orders = orderRepository.findAll();
-        orders.forEach(Order::getState); // Initialize transient state for all
+        orders.forEach(Order::getState);
         return orders;
     }
 
@@ -50,67 +79,69 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Order addItemToOrder(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity) {
         Order order = findOrderByIdOrThrow(orderId);
-        // Add validation: Cannot add items if order is not in NEW state?
-        // if (!"NEW".equals(order.getStatus())) {
-        //     throw new IllegalStateException("Cannot add items to an order that is not NEW.");
-        // }
         OrderItem newItem = new OrderItem(order, menuItemId, menuItemName, quantity, price);
-        order.addItem(newItem); // This also recalculates total
-        return orderRepository.save(order);
+        order.addItem(newItem);
+        Order updatedOrder = orderRepository.save(order);
+        if (!"COMPLETED".equals(updatedOrder.getStatus()) && !"CANCELLED".equals(updatedOrder.getStatus())) {
+            orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
+        }
+        return updatedOrder;
     }
 
     @Override
     @Transactional
     public Order updateItemQuantity(UUID orderId, UUID orderItemId, int newQuantity) {
         Order order = findOrderByIdOrThrow(orderId);
-        // Add validation: Cannot update items if order is not in NEW state?
-
-        // Find the specific item within the order's item list
         OrderItem itemToUpdate = order.getItems().stream()
                 .filter(item -> item.getId().equals(orderItemId))
                 .findFirst()
                 .orElseThrow(() -> new OrderItemNotFoundException(orderItemId, orderId));
-
-        itemToUpdate.setQuantity(newQuantity); // This recalculates item subtotal
-        order.calculateTotalPrice(); // Recalculate order total
-        return orderRepository.save(order);
+        itemToUpdate.setQuantity(newQuantity);
+        order.calculateTotalPrice();
+        Order updatedOrder = orderRepository.save(order);
+        if (!"COMPLETED".equals(updatedOrder.getStatus()) && !"CANCELLED".equals(updatedOrder.getStatus())) {
+            orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
+        }
+        return updatedOrder;
     }
 
     @Override
     @Transactional
     public Order removeItemFromOrder(UUID orderId, UUID orderItemId) {
         Order order = findOrderByIdOrThrow(orderId);
-        // Add validation: Cannot remove items if order is not in NEW state?
-
-        // Check if item exists before removal to throw specific exception
         boolean itemExists = order.getItems().stream().anyMatch(item -> item.getId().equals(orderItemId));
         if (!itemExists) {
             throw new OrderItemNotFoundException(orderItemId, orderId);
         }
-
-        order.removeItem(orderItemId); // This also recalculates total
-        return orderRepository.save(order);
+        order.removeItem(orderItemId);
+        Order updatedOrder = orderRepository.save(order);
+        if (!"COMPLETED".equals(updatedOrder.getStatus()) && !"CANCELLED".equals(updatedOrder.getStatus())) {
+            orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
+        }
+        return updatedOrder;
     }
 
     @Override
     @Transactional
     public Order confirmOrder(UUID orderId) {
         Order order = findOrderByIdOrThrow(orderId);
-        order.confirmOrder(); // Delegate to state object
-        return orderRepository.save(order);
+        order.confirmOrder();
+        Order updatedOrder = orderRepository.save(order);
+        orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
+        return updatedOrder;
     }
 
     @Override
     @Transactional
     public Order completeOrder(UUID orderId) {
         Order order = findOrderByIdOrThrow(orderId);
-        order.completeOrder(); // Delegate to state object
-        return orderRepository.save(order);
+        order.completeOrder();
+        Order updatedOrder = orderRepository.save(order);
+        orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.COMPLETED));
+        return updatedOrder;
     }
 
-    // Helper method to find order or throw exception
     private Order findOrderByIdOrThrow(UUID orderId) {
-        return findOrderById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        return findOrderById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
     }
-} 
+}
