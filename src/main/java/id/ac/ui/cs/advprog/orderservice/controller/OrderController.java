@@ -11,6 +11,7 @@ import id.ac.ui.cs.advprog.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,6 +39,7 @@ public class OrderController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
         List<OrderResponse> orders = orderService.findAllOrders().stream()
                 .map(this::mapToOrderResponse)
@@ -77,6 +79,7 @@ public class OrderController {
     }
 
     @DeleteMapping("/{orderId}/items/{itemId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> removeItemFromOrder(
             @PathVariable UUID orderId,
             @PathVariable UUID itemId) {
@@ -89,6 +92,7 @@ public class OrderController {
     }
 
     @PostMapping("/{orderId}/confirm")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> confirmOrder(@PathVariable UUID orderId) {
         try {
             Order updatedOrder = orderService.confirmOrder(orderId);
@@ -101,6 +105,7 @@ public class OrderController {
     }
 
     @PostMapping("/{orderId}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {
         try {
             Order updatedOrder = orderService.completeOrder(orderId);
