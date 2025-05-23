@@ -17,6 +17,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -322,5 +326,146 @@ class OrderServiceTest {
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, never()).save(any(Order.class));
         assertTrue(order.getState() instanceof ProcessingOrderState); // State remains Processing
+    }
+
+    // ASYNC TESTS - RED PHASE
+
+    @Test
+    void testGetAllOrdersAsync() throws ExecutionException, InterruptedException, TimeoutException {
+        // Arrange
+        Order order2 = new Order("Table 2");
+        order2.setId(UUID.randomUUID());
+        order2.setState(new ProcessingOrderState(order2));
+        List<Order> orders = List.of(order, order2);
+        
+        when(orderRepository.findAll()).thenReturn(orders);
+
+        // Act
+        CompletableFuture<List<Order>> future = orderService.getAllOrdersAsync();
+        List<Order> result = future.get(5, TimeUnit.SECONDS);
+        
+        // Assert
+        assertEquals(2, result.size());
+        assertEquals("T1", result.get(0).getTableNumber());
+        assertEquals("Table 2", result.get(1).getTableNumber());
+        verify(orderRepository, times(1)).findAll();
+    }
+
+    @Test
+    void testGetOrderByIdAsync() throws ExecutionException, InterruptedException, TimeoutException {
+        // Arrange
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        // Act
+        CompletableFuture<Order> future = orderService.getOrderByIdAsync(orderId);
+        Order result = future.get(5, TimeUnit.SECONDS);
+        
+        // Assert
+        assertNotNull(result);
+        assertEquals(orderId, result.getId());
+        assertEquals("T1", result.getTableNumber());
+        verify(orderRepository, times(1)).findById(orderId);
+    }
+
+    @Test
+    void testGetOrderByInvalidIdAsyncShouldReturnNull() throws ExecutionException, InterruptedException, TimeoutException {
+        // Arrange
+        UUID fakeId = UUID.randomUUID();
+        when(orderRepository.findById(fakeId)).thenReturn(Optional.empty());
+        
+        // Act
+        CompletableFuture<Order> future = orderService.getOrderByIdAsync(fakeId);
+        Order result = future.get(5, TimeUnit.SECONDS);
+        
+        // Assert
+        assertNull(result);
+        verify(orderRepository, times(1)).findById(fakeId);
+    }
+
+    @Test
+    void testCreateOrderAsync() throws ExecutionException, InterruptedException, TimeoutException {
+        // Arrange
+        String tableNumber = "Table 5";
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order savedOrder = invocation.getArgument(0);
+            if (savedOrder.getId() == null) {
+                savedOrder.setId(UUID.randomUUID());
+            }
+            return savedOrder;
+        });
+
+        // Act
+        CompletableFuture<Order> future = orderService.createOrderAsync(tableNumber);
+        Order savedOrder = future.get(5, TimeUnit.SECONDS);
+
+        // Assert
+        assertNotNull(savedOrder);
+        assertNotNull(savedOrder.getId());
+        assertEquals(tableNumber, savedOrder.getTableNumber());
+        assertTrue(savedOrder.getState() instanceof NewOrderState);
+        verify(orderRepository, times(1)).save(any(Order.class));
+    }
+
+    @Test
+    void testAddItemToOrderAsync() throws ExecutionException, InterruptedException, TimeoutException {
+        // Arrange
+        String itemName = "Sushi Roll";
+        double itemPrice = 25000.0;
+        int quantity = 2;
+        
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order orderToSave = invocation.getArgument(0);
+            orderToSave.getItems().stream()
+                .filter(item -> item.getId() == null)
+                .forEach(item -> item.setId(UUID.randomUUID()));
+            return orderToSave;
+        });
+
+        // Act
+        CompletableFuture<Order> future = orderService.addItemToOrderAsync(
+            orderId, menuItemId, itemName, itemPrice, quantity);
+        Order updatedOrder = future.get(5, TimeUnit.SECONDS);
+
+        // Assert
+        assertNotNull(updatedOrder);
+        assertEquals(1, updatedOrder.getItems().size());
+        OrderItem addedItem = updatedOrder.getItems().get(0);
+        assertNotNull(addedItem.getId());
+        assertEquals(itemName, addedItem.getMenuItemName());
+        assertEquals(itemPrice, addedItem.getPrice());
+        assertEquals(quantity, addedItem.getQuantity());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+    @Test
+    void testCompleteOrderAsync() throws ExecutionException, InterruptedException, TimeoutException {
+        // Arrange
+        order.setState(new ProcessingOrderState(order));
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        CompletableFuture<Order> future = orderService.completeOrderAsync(orderId);
+        Order completedOrder = future.get(5, TimeUnit.SECONDS);
+
+        // Assert
+        assertNotNull(completedOrder);
+        assertTrue(completedOrder.getState() instanceof CompletedOrderState);
+        assertEquals("COMPLETED", completedOrder.getStatus());
+        verify(orderRepository, times(1)).findById(orderId);
+        verify(orderRepository, times(1)).save(order);
+    }
+
+    @Test
+    void testCreateOrderAsyncWithEmptyTableNumberShouldThrow() {
+        // Act
+        CompletableFuture<Order> future = orderService.createOrderAsync("");
+        
+        // Assert
+        ExecutionException exception = assertThrows(ExecutionException.class, () -> future.get());
+        assertTrue(exception.getCause() instanceof IllegalArgumentException);
+        assertTrue(exception.getCause().getMessage().contains("Table number"));
     }
 } 

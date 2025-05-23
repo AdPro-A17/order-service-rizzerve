@@ -32,6 +32,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -40,6 +41,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -51,6 +53,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 
 @WebMvcTest(controllers = OrderController.class)
 @Import({SecurityConfig.class, JwtAuthFilter.class, JwtService.class})
@@ -338,6 +341,124 @@ class OrderControllerTest {
                 .thenThrow(new OrderItemNotFoundException(itemId, orderId));
 
         mockMvc.perform(delete("/api/orders/{orderId}/items/{itemId}", orderId, itemId))
+                .andExpect(status().isNotFound());
+    }
+
+    // ASYNC TESTS - RED PHASE
+
+    @Test
+    @WithAnonymousUser
+    void testGetAllOrdersAsync() throws Exception {
+        Order order2 = new Order("Table 2");
+        order2.setId(UUID.randomUUID());
+        List<Order> orders = Arrays.asList(testOrder, order2);
+        
+        when(orderService.getAllOrdersAsync())
+                .thenReturn(CompletableFuture.completedFuture(orders));
+
+        // First request - start async processing
+        MvcResult mvcResult = mockMvc.perform(get("/api/orders/async"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        // Complete processing and verify response
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].tableNumber").value("Table 1"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void testGetOrderByIdAsync() throws Exception {
+        when(orderService.getOrderByIdAsync(orderId))
+                .thenReturn(CompletableFuture.completedFuture(testOrder));
+
+        // First request - start async processing
+        MvcResult mvcResult = mockMvc.perform(get("/api/orders/async/{id}", orderId.toString()))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        // Complete processing and verify response
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tableNumber").value("Table 1"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void testCreateOrderAsync() throws Exception {
+        when(orderService.createOrderAsync(anyString()))
+                .thenReturn(CompletableFuture.completedFuture(testOrder));
+
+        // First request - start async processing
+        MvcResult mvcResult = mockMvc.perform(post("/api/orders/async")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validCreateRequest)))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        // Complete processing and verify response
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tableNumber").value("Table 1"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void testAddItemToOrderAsync() throws Exception {
+        when(orderService.addItemToOrderAsync(
+                eq(orderId), 
+                any(UUID.class), 
+                anyString(), 
+                any(Double.class), 
+                anyInt()))
+                .thenReturn(CompletableFuture.completedFuture(testOrder));
+
+        // First request - start async processing
+        MvcResult mvcResult = mockMvc.perform(post("/api/orders/async/{orderId}/items", orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validAddItemRequest)))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        // Complete processing and verify response
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId.toString()));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void testCompleteOrderAsync() throws Exception {
+        when(orderService.completeOrderAsync(orderId))
+                .thenReturn(CompletableFuture.completedFuture(testOrder));
+
+        // First request - start async processing
+        MvcResult mvcResult = mockMvc.perform(post("/api/orders/async/{orderId}/complete", orderId))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        // Complete processing and verify response
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId.toString()));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void testGetNonExistentOrderByIdAsync() throws Exception {
+        UUID nonExistentId = UUID.randomUUID();
+        when(orderService.getOrderByIdAsync(nonExistentId))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        // First request - start async processing
+        MvcResult mvcResult = mockMvc.perform(get("/api/orders/async/{id}", nonExistentId.toString()))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        // Complete processing and verify response
+        mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isNotFound());
     }
 } 
