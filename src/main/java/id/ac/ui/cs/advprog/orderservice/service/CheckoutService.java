@@ -62,6 +62,19 @@ public class CheckoutService {
         return checkoutRepository.save(checkout);
     }
 
+    @Async
+    public CompletableFuture<Void> asyncUpdateTotal(Checkout checkout) {
+        if (checkout.getCouponCode() != null && !checkout.getCouponCode().isEmpty()) {
+            pricingContext.setStrategy(couponPricing);
+        } else {
+            pricingContext.setStrategy(regularPricing);
+        }
+
+        pricingContext.calculateTotal(checkout);
+        checkoutRepository.save(checkout);
+        return CompletableFuture.completedFuture(null);
+    }
+
     public List<Checkout> getCheckoutsByTable(String tableNumber) {
         return checkoutRepository.findByTableNumber(tableNumber);
     }
