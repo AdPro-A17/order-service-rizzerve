@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @RestController
@@ -122,6 +123,50 @@ public class OrderController {
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    // ASYNC ENDPOINTS
+
+    @GetMapping("/async")
+    public CompletableFuture<ResponseEntity<List<OrderResponse>>> getAllOrdersAsync() {
+        return orderService.getAllOrdersAsync()
+                .thenApply(orders -> ResponseEntity.ok(orders.stream()
+                        .map(this::mapToOrderResponse)
+                        .collect(Collectors.toList())));
+    }
+
+    @GetMapping("/async/{id}")
+    public CompletableFuture<ResponseEntity<OrderResponse>> getOrderByIdAsync(@PathVariable UUID id) {
+        return orderService.getOrderByIdAsync(id)
+                .thenApply(order -> order != null ? 
+                    ResponseEntity.ok(mapToOrderResponse(order)) : 
+                    ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/async")
+    public CompletableFuture<ResponseEntity<OrderResponse>> createOrderAsync(@RequestBody CreateOrderRequest request) {
+        return orderService.createOrderAsync(request.getTableNumber())
+                .thenApply(order -> new ResponseEntity<>(mapToOrderResponse(order), HttpStatus.CREATED));
+    }
+
+    @PostMapping("/async/{orderId}/items")
+    public CompletableFuture<ResponseEntity<OrderResponse>> addItemToOrderAsync(
+            @PathVariable UUID orderId,
+            @RequestBody AddOrderItemRequest request) {
+        return orderService.addItemToOrderAsync(
+                orderId,
+                request.getMenuItemId(),
+                request.getMenuItemName(),
+                request.getPrice(),
+                request.getQuantity())
+                .thenApply(order -> ResponseEntity.ok(mapToOrderResponse(order)));
+    }
+
+    @PostMapping("/async/{orderId}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public CompletableFuture<ResponseEntity<OrderResponse>> completeOrderAsync(@PathVariable UUID orderId) {
+        return orderService.completeOrderAsync(orderId)
+                .thenApply(order -> ResponseEntity.ok(mapToOrderResponse(order)));
     }
 
     private OrderResponse mapToOrderResponse(Order order) {

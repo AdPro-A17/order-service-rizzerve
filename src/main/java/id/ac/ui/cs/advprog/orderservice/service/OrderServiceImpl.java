@@ -6,12 +6,14 @@ import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -106,6 +108,79 @@ public class OrderServiceImpl implements OrderService {
         Order order = findOrderByIdOrThrow(orderId);
         order.completeOrder(); // Delegate to state object
         return orderRepository.save(order);
+    }
+
+    // ASYNC METHODS
+
+    /**
+     * Asynchronously get all orders
+     */
+    @Override
+    @Async("taskExecutor")
+    public CompletableFuture<List<Order>> getAllOrdersAsync() {
+        return CompletableFuture.supplyAsync(() -> {
+            List<Order> orders = orderRepository.findAll();
+            orders.forEach(Order::getState); // Initialize transient state for all
+            return orders;
+        });
+    }
+
+    /**
+     * Asynchronously get an order by ID
+     */
+    @Override
+    @Async("taskExecutor")
+    public CompletableFuture<Order> getOrderByIdAsync(UUID orderId) {
+        return CompletableFuture.supplyAsync(() -> {
+            Optional<Order> order = orderRepository.findById(orderId);
+            order.ifPresent(Order::getState); // Initialize transient state
+            return order.orElse(null);
+        });
+    }
+
+    /**
+     * Asynchronously create a new order
+     */
+    @Override
+    @Async("taskExecutor")
+    @Transactional
+    public CompletableFuture<Order> createOrderAsync(String tableNumber) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (tableNumber == null || tableNumber.trim().isEmpty()) {
+                throw new IllegalArgumentException("Table number cannot be empty");
+            }
+            Order order = new Order(tableNumber);
+            return orderRepository.save(order);
+        });
+    }
+
+    /**
+     * Asynchronously add item to order
+     */
+    @Override
+    @Async("taskExecutor")
+    @Transactional
+    public CompletableFuture<Order> addItemToOrderAsync(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity) {
+        return CompletableFuture.supplyAsync(() -> {
+            Order order = findOrderByIdOrThrow(orderId);
+            OrderItem newItem = new OrderItem(order, menuItemId, menuItemName, quantity, price);
+            order.addItem(newItem);
+            return orderRepository.save(order);
+        });
+    }
+
+    /**
+     * Asynchronously complete an order
+     */
+    @Override
+    @Async("taskExecutor")
+    @Transactional
+    public CompletableFuture<Order> completeOrderAsync(UUID orderId) {
+        return CompletableFuture.supplyAsync(() -> {
+            Order order = findOrderByIdOrThrow(orderId);
+            order.completeOrder();
+            return orderRepository.save(order);
+        });
     }
 
     // Helper method to find order or throw exception

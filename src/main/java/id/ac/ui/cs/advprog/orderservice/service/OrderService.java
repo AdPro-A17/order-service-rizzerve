@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public interface OrderService {
 
@@ -85,6 +86,33 @@ public interface OrderService {
      * @throws IllegalStateException if the order cannot be completed in its current state.
      */
     Order completeOrder(UUID orderId);
+
+    // ASYNC METHODS
+
+    /**
+     * Asynchronously get all orders
+     */
+    CompletableFuture<List<Order>> getAllOrdersAsync();
+
+    /**
+     * Asynchronously get an order by ID
+     */
+    CompletableFuture<Order> getOrderByIdAsync(UUID orderId);
+
+    /**
+     * Asynchronously create a new order
+     */
+    CompletableFuture<Order> createOrderAsync(String tableNumber);
+
+    /**
+     * Asynchronously add item to order
+     */
+    CompletableFuture<Order> addItemToOrderAsync(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity);
+
+    /**
+     * Asynchronously complete an order
+     */
+    CompletableFuture<Order> completeOrderAsync(UUID orderId);
 
     // Define custom exception classes if needed (e.g., OrderNotFoundException, OrderItemNotFoundException)
 } 
