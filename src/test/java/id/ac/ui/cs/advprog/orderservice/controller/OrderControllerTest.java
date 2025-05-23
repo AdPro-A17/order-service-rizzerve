@@ -193,7 +193,7 @@ class OrderControllerTest {
 
         mockMvc.perform(post("/api/orders/{orderId}/confirm", orderId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(orderId.toString())));
+                .andExpect(jsonPath("$.id", is(orderId.toStrizng())));
     }
 
     // AUTHENTICATION FAILURE TESTS - Only admin endpoints should require auth
