@@ -193,7 +193,7 @@ class OrderControllerTest {
 
         mockMvc.perform(post("/api/orders/{orderId}/confirm", orderId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(orderId.toStrizng())));
+                .andExpect(jsonPath("$.id", is(orderId.toString())));
     }
 
     // AUTHENTICATION FAILURE TESTS - Only admin endpoints should require auth
@@ -225,21 +225,21 @@ class OrderControllerTest {
     @WithMockUser(roles = "USER")
     void testGetAllOrders_authenticatedNonAdminShouldFail() throws Exception {
         mockMvc.perform(get("/api/orders"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void testRemoveItemFromOrder_authenticatedNonAdminShouldFail() throws Exception {
         mockMvc.perform(delete("/api/orders/{orderId}/items/{itemId}", orderId, itemId))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void testCompleteOrder_authenticatedNonAdminShouldFail() throws Exception {
         mockMvc.perform(post("/api/orders/{orderId}/complete", orderId))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isForbidden());
     }
 
     // ADMIN AUTHENTICATION TESTS - Success cases
