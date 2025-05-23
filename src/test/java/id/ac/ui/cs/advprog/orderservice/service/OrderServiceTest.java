@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
+import id.ac.ui.cs.advprog.orderservice.client.MenuServiceClient;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
@@ -22,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -31,6 +33,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private MenuServiceClient menuServiceClient;
 
     // No need to mock states if we test interactions via the Order object
 
@@ -42,6 +47,7 @@ class OrderServiceTest {
     private UUID orderId;
     private UUID menuItemId;
     private UUID orderItemId;
+    private MenuServiceClient.MenuItemResponse mockMenuItemResponse;
 
     @BeforeEach
     void setUp() {
@@ -56,6 +62,12 @@ class OrderServiceTest {
 
         item = new OrderItem(order, menuItemId, "Test Item", 1, 10.0);
         item.setId(orderItemId); // Manually set ID
+
+        // Mock menu service response
+        mockMenuItemResponse = new MenuServiceClient.MenuItemResponse(
+            menuItemId, "Test Item", "Test Description", 10.0, true
+        );
+        when(menuServiceClient.getMenuItemById(menuItemId)).thenReturn(mockMenuItemResponse);
 
         // Don't add item here, add it in specific tests
     }
@@ -146,8 +158,6 @@ class OrderServiceTest {
     @Test
     void testAddItemToOrder() {
         // Arrange
-        String itemName = "Nasi Goreng";
-        double itemPrice = 15000.0;
         int quantity = 1;
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         // Mock save to return the modified order AND simulate OrderItem ID generation
@@ -161,7 +171,7 @@ class OrderServiceTest {
         });
 
         // Act
-        Order updatedOrder = orderService.addItemToOrder(orderId, menuItemId, itemName, itemPrice, quantity);
+        Order updatedOrder = orderService.addItemToOrder(orderId, menuItemId, quantity);
 
         // Assert
         assertNotNull(updatedOrder);
@@ -169,13 +179,14 @@ class OrderServiceTest {
         OrderItem addedItem = updatedOrder.getItems().get(0);
         assertNotNull(addedItem.getId()); // Should have an ID after being added/saved
         assertEquals(menuItemId, addedItem.getMenuItemId());
-        assertEquals(itemName, addedItem.getMenuItemName());
-        assertEquals(itemPrice, addedItem.getPrice());
+        assertEquals("Test Item", addedItem.getMenuItemName()); // From mock response
+        assertEquals(10.0, addedItem.getPrice()); // From mock response
         assertEquals(quantity, addedItem.getQuantity());
-        assertEquals(itemPrice * quantity, addedItem.getSubtotal());
-        assertEquals(itemPrice * quantity, updatedOrder.getTotalPrice()); // Check total price update
+        assertEquals(10.0 * quantity, addedItem.getSubtotal());
+        assertEquals(10.0 * quantity, updatedOrder.getTotalPrice()); // Check total price update
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order); // Verify save with the updated order
+        verify(menuServiceClient, times(1)).getMenuItemById(menuItemId);
     }
 
     @Test
@@ -185,7 +196,7 @@ class OrderServiceTest {
 
         // Act & Assert
         assertThrows(OrderNotFoundException.class, () -> {
-            orderService.addItemToOrder(orderId, menuItemId, "Test", 10.0, 1);
+            orderService.addItemToOrder(orderId, menuItemId, 1);
         });
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, never()).save(any(Order.class)); // Save should not be called
@@ -409,8 +420,6 @@ class OrderServiceTest {
     @Test
     void testAddItemToOrderAsync() throws ExecutionException, InterruptedException, TimeoutException {
         // Arrange
-        String itemName = "Sushi Roll";
-        double itemPrice = 25000.0;
         int quantity = 2;
         
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
@@ -424,7 +433,7 @@ class OrderServiceTest {
 
         // Act
         CompletableFuture<Order> future = orderService.addItemToOrderAsync(
-            orderId, menuItemId, itemName, itemPrice, quantity);
+            orderId, menuItemId, quantity);
         Order updatedOrder = future.get(5, TimeUnit.SECONDS);
 
         // Assert
@@ -432,11 +441,12 @@ class OrderServiceTest {
         assertEquals(1, updatedOrder.getItems().size());
         OrderItem addedItem = updatedOrder.getItems().get(0);
         assertNotNull(addedItem.getId());
-        assertEquals(itemName, addedItem.getMenuItemName());
-        assertEquals(itemPrice, addedItem.getPrice());
+        assertEquals("Test Item", addedItem.getMenuItemName()); // From mock response
+        assertEquals(10.0, addedItem.getPrice()); // From mock response
         assertEquals(quantity, addedItem.getQuantity());
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
+        verify(menuServiceClient, times(1)).getMenuItemById(menuItemId);
     }
 
     @Test
