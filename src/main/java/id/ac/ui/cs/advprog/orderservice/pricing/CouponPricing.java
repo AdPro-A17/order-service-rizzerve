@@ -1,39 +1,35 @@
 package id.ac.ui.cs.advprog.orderservice.pricing;
 
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.web.client.RestTemplate;
 
 @Component
-public class CouponPricing implements CheckoutPricing{
-    private final Map<String, Double> couponDiscounts = new HashMap<>();
+public class CouponPricing implements PricingStrategy {
 
-    public CouponPricing() {
-        couponDiscounts.put("SAVE10", 0.1);
-        couponDiscounts.put("SAVE20", 0.2);
-        couponDiscounts.put("HALF", 0.5);
+    private final RestTemplate restTemplate;
+    private final String couponServiceUrl;
+
+    @Autowired
+    public CouponPricing(RestTemplate restTemplate, @Value("${coupon-service.url}") String couponServiceUrl) {
+        this.restTemplate = restTemplate;
+        this.couponServiceUrl = couponServiceUrl;
     }
 
     @Override
-    public void calculateFinalPrice(Checkout checkout) {
-        String couponCode = checkout.getCouponCode();
+    public void calculateTotal(Checkout checkout) {
+        try {
+            String url = couponServiceUrl + "/coupon/" + checkout.getCouponCode() + "/apply?total=" + checkout.getTotalPrice();
+            Double finalPrice = restTemplate.postForObject(url, null, Double.class);
 
-        if (couponCode != null && !couponCode.isEmpty() && couponDiscounts.containsKey(couponCode)) {
-            double discountRate = couponDiscounts.get(couponCode);
-            double discountAmount = checkout.getTotalPrice() * discountRate;
-
-            checkout.setDiscountAmount(discountAmount);
-            checkout.setFinalPrice(checkout.getTotalPrice() - discountAmount);
-        } else {
-
-            checkout.setDiscountAmount(0);
-            checkout.setFinalPrice(checkout.getTotalPrice());
+            if (finalPrice != null) {
+                checkout.setDiscountAmount(checkout.getTotalPrice() - finalPrice);
+                checkout.setFinalPrice(finalPrice);
+            }
+        } catch (Exception e) {
+            new RegularPricing().calculateTotal(checkout);
         }
-    }
-
-    public boolean isValidCoupon(String couponCode) {
-        return couponCode != null && couponDiscounts.containsKey(couponCode);
     }
 }

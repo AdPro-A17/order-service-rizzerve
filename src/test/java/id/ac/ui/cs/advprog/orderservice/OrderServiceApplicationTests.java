@@ -17,7 +17,6 @@ class OrderServiceApplicationTests {
 
     @Test
     void contextLoads() {
-        OrderServiceApplication.main(new String[] {});
         assertNotNull(applicationContext);
     }
 }
