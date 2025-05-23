@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.orderservice.dto.AddOrderItemRequest;
 import id.ac.ui.cs.advprog.orderservice.dto.CreateOrderRequest;
 import id.ac.ui.cs.advprog.orderservice.dto.OrderResponse;
 import id.ac.ui.cs.advprog.orderservice.dto.UpdateQuantityRequest;
+import id.ac.ui.cs.advprog.orderservice.exception.MenuItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
@@ -60,13 +61,13 @@ public class OrderController {
             Order updatedOrder = orderService.addItemToOrder(
                     orderId,
                     request.getMenuItemId(),
-                    request.getMenuItemName(),
-                    request.getPrice(),
                     request.getQuantity()
             );
             return ResponseEntity.ok(mapToOrderResponse(updatedOrder));
         } catch (OrderNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (MenuItemNotFoundException e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -84,9 +85,8 @@ public class OrderController {
         }
     }
 
-    // Only admin can remove items from orders
+    // Customer can remove items from order (before checkout)
     @DeleteMapping("/{orderId}/items/{itemId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> removeItemFromOrder(
             @PathVariable UUID orderId,
             @PathVariable UUID itemId) {
@@ -111,9 +111,8 @@ public class OrderController {
         }
     }
 
-    // Only admin can mark orders as complete
+    // Mark order as complete
     @PostMapping("/{orderId}/complete")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {
         try {
             Order updatedOrder = orderService.completeOrder(orderId);
@@ -156,8 +155,6 @@ public class OrderController {
         return orderService.addItemToOrderAsync(
                 orderId,
                 request.getMenuItemId(),
-                request.getMenuItemName(),
-                request.getPrice(),
                 request.getQuantity())
                 .thenApply(order -> ResponseEntity.ok(mapToOrderResponse(order)));
     }

@@ -1,10 +1,13 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
-import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
+import id.ac.ui.cs.advprog.orderservice.client.MenuServiceClient;
+import id.ac.ui.cs.advprog.orderservice.exception.MenuItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
+import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -16,13 +19,16 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Service
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final MenuServiceClient menuServiceClient;
 
     @Autowired
-    public OrderServiceImpl(OrderRepository orderRepository) {
+    public OrderServiceImpl(OrderRepository orderRepository, MenuServiceClient menuServiceClient) {
         this.orderRepository = orderRepository;
+        this.menuServiceClient = menuServiceClient;
     }
 
     @Override
@@ -50,13 +56,24 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public Order addItemToOrder(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity) {
+    public Order addItemToOrder(UUID orderId, UUID menuItemId, int quantity) {
         Order order = findOrderByIdOrThrow(orderId);
-        // Add validation: Cannot add items if order is not in NEW state?
-        // if (!"NEW".equals(order.getStatus())) {
-        //     throw new IllegalStateException("Cannot add items to an order that is not NEW.");
-        // }
-        OrderItem newItem = new OrderItem(order, menuItemId, menuItemName, quantity, price);
+        
+        // Fetch menu item details from menu service
+        MenuServiceClient.MenuItemResponse menuItem = menuServiceClient.getMenuItemById(menuItemId);
+        if (menuItem == null) {
+            throw new MenuItemNotFoundException(menuItemId);
+        }
+        
+        // Check if menu item is available
+        if (!menuItem.getAvailable()) {
+            throw new MenuItemNotFoundException(menuItemId, "Item is currently unavailable");
+        }
+        
+        log.info("Adding menu item {} to order {}: {} x {} at ${}", 
+                menuItemId, orderId, menuItem.getName(), quantity, menuItem.getPrice());
+        
+        OrderItem newItem = new OrderItem(order, menuItemId, menuItem.getName(), quantity, menuItem.getPrice());
         order.addItem(newItem); // This also recalculates total
         return orderRepository.save(order);
     }
@@ -159,14 +176,9 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Async("taskExecutor")
-    @Transactional
-    public CompletableFuture<Order> addItemToOrderAsync(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity) {
-        return CompletableFuture.supplyAsync(() -> {
-            Order order = findOrderByIdOrThrow(orderId);
-            OrderItem newItem = new OrderItem(order, menuItemId, menuItemName, quantity, price);
-            order.addItem(newItem);
-            return orderRepository.save(order);
-        });
+    public CompletableFuture<Order> addItemToOrderAsync(UUID orderId, UUID menuItemId, int quantity) {
+        Order result = addItemToOrder(orderId, menuItemId, quantity);
+        return CompletableFuture.completedFuture(result);
     }
 
     /**

@@ -32,18 +32,16 @@ public interface OrderService {
 
     /**
      * Adds an item to an existing order.
-     * Fetches item details (name, price) potentially from an external service
-     * or expects them to be provided.
+     * Fetches item details (name, price) from the menu service.
      * @param orderId The ID of the order to add the item to.
      * @param menuItemId The ID of the menu item.
-     * @param menuItemName The name of the menu item.
-     * @param price The price of the menu item.
      * @param quantity The quantity of the item to add.
      * @return The updated Order object.
      * @throws OrderNotFoundException if the orderId does not exist.
+     * @throws MenuItemNotFoundException if the menuItemId does not exist or is unavailable.
      * @throws IllegalArgumentException if quantity is invalid.
      */
-    Order addItemToOrder(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity);
+    Order addItemToOrder(UUID orderId, UUID menuItemId, int quantity);
 
     /**
      * Updates the quantity of an existing item within an order.
@@ -107,7 +105,7 @@ public interface OrderService {
     /**
      * Asynchronously add item to order
      */
-    CompletableFuture<Order> addItemToOrderAsync(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity);
+    CompletableFuture<Order> addItemToOrderAsync(UUID orderId, UUID menuItemId, int quantity);
 
     /**
      * Asynchronously complete an order
