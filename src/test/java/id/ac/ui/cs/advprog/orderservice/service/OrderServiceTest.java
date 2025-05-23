@@ -63,11 +63,10 @@ class OrderServiceTest {
         item = new OrderItem(order, menuItemId, "Test Item", 1, 10.0);
         item.setId(orderItemId); // Manually set ID
 
-        // Mock menu service response
+        // Mock menu service response - create but don't stub here
         mockMenuItemResponse = new MenuServiceClient.MenuItemResponse(
             menuItemId, "Test Item", "Test Description", 10.0, true
         );
-        when(menuServiceClient.getMenuItemById(menuItemId)).thenReturn(mockMenuItemResponse);
 
         // Don't add item here, add it in specific tests
     }
@@ -159,6 +158,7 @@ class OrderServiceTest {
     void testAddItemToOrder() {
         // Arrange
         int quantity = 1;
+        when(menuServiceClient.getMenuItemById(menuItemId)).thenReturn(mockMenuItemResponse);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         // Mock save to return the modified order AND simulate OrderItem ID generation
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
@@ -422,6 +422,7 @@ class OrderServiceTest {
         // Arrange
         int quantity = 2;
         
+        when(menuServiceClient.getMenuItemById(menuItemId)).thenReturn(mockMenuItemResponse);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order orderToSave = invocation.getArgument(0);

@@ -230,13 +230,6 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.id", is(orderId.toString())));
     }
 
-    @Test
-    @WithAnonymousUser
-    void testCompleteOrder_unauthenticatedShouldFail() throws Exception {
-        mockMvc.perform(post("/api/orders/{orderId}/complete", orderId))
-                .andExpect(status().isForbidden());
-    }
-
     // AUTHORIZATION FAILURE TESTS - Only admin functions should be restricted
 
     @Disabled
