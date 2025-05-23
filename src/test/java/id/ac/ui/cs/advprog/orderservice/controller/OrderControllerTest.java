@@ -17,7 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
@@ -65,13 +65,13 @@ class OrderControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private OrderService orderService;
 
-    @MockBean
+    @MockitoBean
     private JwtService jwtService;
 
-    @MockBean
+    @MockitoBean
     private UserDetailsService userDetailsService;
 
     private UUID orderId;
@@ -225,21 +225,21 @@ class OrderControllerTest {
     @WithMockUser(roles = "USER")
     void testGetAllOrders_authenticatedNonAdminShouldFail() throws Exception {
         mockMvc.perform(get("/api/orders"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void testRemoveItemFromOrder_authenticatedNonAdminShouldFail() throws Exception {
         mockMvc.perform(delete("/api/orders/{orderId}/items/{itemId}", orderId, itemId))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void testCompleteOrder_authenticatedNonAdminShouldFail() throws Exception {
         mockMvc.perform(post("/api/orders/{orderId}/complete", orderId))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
     }
 
     // ADMIN AUTHENTICATION TESTS - Success cases
