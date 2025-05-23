@@ -4,7 +4,9 @@ import id.ac.ui.cs.advprog.orderservice.dto.CheckoutRequest;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
+import id.ac.ui.cs.advprog.orderservice.pricing.CouponPricing;
 import id.ac.ui.cs.advprog.orderservice.pricing.PricingContext;
+import id.ac.ui.cs.advprog.orderservice.pricing.RegularPricing;
 import id.ac.ui.cs.advprog.orderservice.repository.CheckoutRepository;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,6 +35,13 @@ class CheckoutServiceTest {
 
     @Mock
     private PricingContext pricingContext;
+
+    @Mock
+    private RegularPricing regularPricing;
+
+    @Mock
+    private CouponPricing couponPricing;
+
 
     @InjectMocks
     private CheckoutService checkoutService;
@@ -67,13 +77,14 @@ class CheckoutServiceTest {
         checkout.setTableNumber("A7");
         checkout.setTotalPrice(150000.0);
         checkout.setFinalPrice(150000.0);
+
     }
 
     @Test
-    void testCreateCheckout() {
+    void testCreateCheckout_NoCoupon() {
         CheckoutRequest request = new CheckoutRequest();
         request.setOrderId(orderId);
-        request.setCouponCode("SAVE10");
+        request.setCouponCode(null);
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(checkoutRepository.save(any(Checkout.class))).thenReturn(checkout);
@@ -83,10 +94,53 @@ class CheckoutServiceTest {
 
         assertNotNull(result);
         assertEquals("A7", result.getTableNumber());
+        assertNull(result.getCouponCode());
         verify(orderRepository).findById(orderId);
         verify(checkoutRepository).save(any(Checkout.class));
+        verify(pricingContext).setStrategy(regularPricing);
         verify(pricingContext).calculateTotal(any(Checkout.class));
+        verify(orderRepository).save(order);
     }
+
+    @Test
+    void testCreateCheckout_EmptyCouponCode() {
+        CheckoutRequest request = new CheckoutRequest();
+        request.setOrderId(orderId);
+        request.setCouponCode("");
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(checkoutRepository.save(any(Checkout.class))).thenReturn(checkout);
+        doNothing().when(pricingContext).calculateTotal(any(Checkout.class));
+
+        Checkout result = checkoutService.createCheckout(request);
+
+        assertNotNull(result);
+        assertEquals("A7", result.getTableNumber());
+        assertEquals(null, result.getCouponCode());
+        verify(orderRepository).findById(orderId);
+        verify(checkoutRepository).save(any(Checkout.class));
+        verify(pricingContext).setStrategy(regularPricing);
+        verify(pricingContext).calculateTotal(any(Checkout.class));
+        verify(orderRepository).save(order);
+    }
+
+
+    @Test
+    void testCreateCheckout_OrderNotFound() {
+        CheckoutRequest request = new CheckoutRequest();
+        request.setOrderId(orderId);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                checkoutService.createCheckout(request));
+
+        verify(orderRepository).findById(orderId);
+        verify(checkoutRepository, never()).save(any(Checkout.class));
+        verify(pricingContext, never()).calculateTotal(any(Checkout.class));
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
 
     @Test
     void testGetCheckoutsByTable() {
@@ -123,6 +177,7 @@ class CheckoutServiceTest {
 
         assertNotNull(result);
         assertEquals("COMPLETED", result.getStatus());
+        assertNotNull(result.getUpdatedAt());
         verify(checkoutRepository).findById(checkoutId);
         verify(checkoutRepository).save(any(Checkout.class));
     }
@@ -136,5 +191,53 @@ class CheckoutServiceTest {
 
         verify(checkoutRepository).findById(checkoutId);
         verify(checkoutRepository, never()).save(any(Checkout.class));
+    }
+
+    @Test
+    void testAsyncUpdateTotal_WithCoupon() throws Exception {
+        checkout.setCouponCode("SAVE10");
+
+        doNothing().when(pricingContext).calculateTotal(any(Checkout.class));
+        when(checkoutRepository.save(any(Checkout.class))).thenReturn(checkout);
+
+        CompletableFuture<Void> future = checkoutService.asyncUpdateTotal(checkout);
+
+        future.get();
+
+        verify(pricingContext).setStrategy(couponPricing);
+        verify(pricingContext).calculateTotal(any(Checkout.class));
+        verify(checkoutRepository).save(any(Checkout.class));
+    }
+
+    @Test
+    void testAsyncUpdateTotal_NoCoupon() throws Exception {
+        checkout.setCouponCode(null);
+
+        doNothing().when(pricingContext).calculateTotal(any(Checkout.class));
+        when(checkoutRepository.save(any(Checkout.class))).thenReturn(checkout);
+
+        CompletableFuture<Void> future = checkoutService.asyncUpdateTotal(checkout);
+
+        future.get();
+
+        verify(pricingContext).setStrategy(regularPricing);
+        verify(pricingContext).calculateTotal(any(Checkout.class));
+        verify(checkoutRepository).save(any(Checkout.class));
+    }
+
+    @Test
+    void testAsyncUpdateTotal_EmptyCouponCode() throws Exception {
+        checkout.setCouponCode("");
+
+        doNothing().when(pricingContext).calculateTotal(any(Checkout.class));
+        when(checkoutRepository.save(any(Checkout.class))).thenReturn(checkout);
+
+        CompletableFuture<Void> future = checkoutService.asyncUpdateTotal(checkout);
+
+        future.get();
+
+        verify(pricingContext).setStrategy(regularPricing);
+        verify(pricingContext).calculateTotal(any(Checkout.class));
+        verify(checkoutRepository).save(any(Checkout.class));
     }
 }
