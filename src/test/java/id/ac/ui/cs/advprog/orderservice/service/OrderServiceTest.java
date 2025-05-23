@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
 import id.ac.ui.cs.advprog.orderservice.client.MenuServiceClient;
+import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
@@ -23,9 +24,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +36,9 @@ class OrderServiceTest {
 
     @Mock
     private MenuServiceClient menuServiceClient;
+
+    @Mock
+    private TableServiceClient tableServiceClient;
 
     // No need to mock states if we test interactions via the Order object
 
@@ -74,6 +77,8 @@ class OrderServiceTest {
     @Test
     void testCreateOrder() {
         // Arrange: Mock repository save to return the saved order with potential ID update
+        when(tableServiceClient.isTableAvailable(1)).thenReturn(true); // Table 1 is available
+        doNothing().when(tableServiceClient).reserveTable(eq(1), any(UUID.class)); // Mock table reservation
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order savedOrder = invocation.getArgument(0);
             // Simulate ID generation if not done in constructor
@@ -97,6 +102,8 @@ class OrderServiceTest {
         assertTrue(createdOrder.getItems().isEmpty());
         assertEquals(0.0, createdOrder.getTotalPrice());
         verify(orderRepository, times(1)).save(any(Order.class)); // Verify save was called
+        verify(tableServiceClient, times(1)).isTableAvailable(1); // Verify table availability check
+        verify(tableServiceClient, times(1)).reserveTable(eq(1), any(UUID.class)); // Verify table reservation
     }
 
     @Test
@@ -311,6 +318,7 @@ class OrderServiceTest {
          assertTrue(order.getState() instanceof ProcessingOrderState);
          when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
          when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+         doNothing().when(tableServiceClient).releaseTable(eq(1), eq(orderId)); // Mock table release
 
         // Act
         Order completedOrder = orderService.completeOrder(orderId);
@@ -321,6 +329,7 @@ class OrderServiceTest {
         assertEquals("COMPLETED", completedOrder.getStatus());
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
+        verify(tableServiceClient, times(1)).releaseTable(eq(1), eq(orderId)); // Verify table release
     }
 
      @Test
@@ -397,6 +406,8 @@ class OrderServiceTest {
     void testCreateOrderAsync() throws ExecutionException, InterruptedException, TimeoutException {
         // Arrange
         String tableNumber = "Table 5";
+        when(tableServiceClient.isTableAvailable(5)).thenReturn(true); // Table 5 is available
+        doNothing().when(tableServiceClient).reserveTable(eq(5), any(UUID.class)); // Mock table reservation
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order savedOrder = invocation.getArgument(0);
             if (savedOrder.getId() == null) {
@@ -415,6 +426,8 @@ class OrderServiceTest {
         assertEquals(tableNumber, savedOrder.getTableNumber());
         assertTrue(savedOrder.getState() instanceof NewOrderState);
         verify(orderRepository, times(1)).save(any(Order.class));
+        verify(tableServiceClient, times(1)).isTableAvailable(5);
+        verify(tableServiceClient, times(1)).reserveTable(eq(5), any(UUID.class));
     }
 
     @Test
@@ -456,6 +469,7 @@ class OrderServiceTest {
         order.setState(new ProcessingOrderState(order));
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doNothing().when(tableServiceClient).releaseTable(eq(1), eq(orderId)); // Mock table release
 
         // Act
         CompletableFuture<Order> future = orderService.completeOrderAsync(orderId);
@@ -467,6 +481,7 @@ class OrderServiceTest {
         assertEquals("COMPLETED", completedOrder.getStatus());
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
+        verify(tableServiceClient, times(1)).releaseTable(eq(1), eq(orderId)); // Verify table release
     }
 
     @Test

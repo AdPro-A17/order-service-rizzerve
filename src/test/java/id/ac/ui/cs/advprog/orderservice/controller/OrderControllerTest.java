@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.orderservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.orderservice.client.MenuServiceClient;
+import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 import id.ac.ui.cs.advprog.orderservice.config.AsyncConfig;
 import id.ac.ui.cs.advprog.orderservice.config.SecurityConfig;
 import id.ac.ui.cs.advprog.orderservice.dto.AddOrderItemRequest;
@@ -82,6 +83,9 @@ class OrderControllerTest {
 
     @MockitoBean
     private MenuServiceClient menuServiceClient;
+
+    @MockitoBean
+    private TableServiceClient tableServiceClient;
 
     private UUID orderId;
     private UUID itemId;
