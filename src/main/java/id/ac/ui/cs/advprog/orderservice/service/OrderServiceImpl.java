@@ -1,9 +1,11 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
 import id.ac.ui.cs.advprog.orderservice.client.MenuServiceClient;
+import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 import id.ac.ui.cs.advprog.orderservice.exception.MenuItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
+import id.ac.ui.cs.advprog.orderservice.exception.TableNotAvailableException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
@@ -24,19 +26,41 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final MenuServiceClient menuServiceClient;
+    private final TableServiceClient tableServiceClient;
 
     @Autowired
-    public OrderServiceImpl(OrderRepository orderRepository, MenuServiceClient menuServiceClient) {
+    public OrderServiceImpl(OrderRepository orderRepository, MenuServiceClient menuServiceClient, TableServiceClient tableServiceClient) {
         this.orderRepository = orderRepository;
         this.menuServiceClient = menuServiceClient;
+        this.tableServiceClient = tableServiceClient;
     }
 
     @Override
     @Transactional
     public Order createOrder(String tableNumber) {
+        // Validate and reserve table before creating order
+        int tableNum = parseTableNumber(tableNumber);
+        log.info("Creating order for table {}", tableNum);
+        
+        // Check table availability and reserve it
+        if (!tableServiceClient.isTableAvailable(tableNum)) {
+            throw new TableNotAvailableException("Table " + tableNum + " is not available");
+        }
+        
         Order order = new Order(tableNumber);
-        // Initial state (NEW) is set in Order constructor
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        
+        // Reserve the table after successful order creation
+        try {
+            tableServiceClient.reserveTable(tableNum, savedOrder.getId());
+            log.info("Successfully reserved table {} for order {}", tableNum, savedOrder.getId());
+        } catch (Exception e) {
+            // If table reservation fails, we might want to rollback the order
+            log.error("Failed to reserve table {} for order {}: {}", tableNum, savedOrder.getId(), e.getMessage());
+            throw new TableNotAvailableException("Failed to reserve table " + tableNum);
+        }
+        
+        return savedOrder;
     }
 
     @Override
@@ -124,7 +148,19 @@ public class OrderServiceImpl implements OrderService {
     public Order completeOrder(UUID orderId) {
         Order order = findOrderByIdOrThrow(orderId);
         order.completeOrder(); // Delegate to state object
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        
+        // Release the table when order is completed
+        try {
+            int tableNum = parseTableNumber(order.getTableNumber());
+            tableServiceClient.releaseTable(tableNum, orderId);
+            log.info("Released table {} after completing order {}", tableNum, orderId);
+        } catch (Exception e) {
+            log.error("Failed to release table for order {}: {}", orderId, e.getMessage());
+            // Don't throw exception here as order completion should succeed even if table release fails
+        }
+        
+        return savedOrder;
     }
 
     // ASYNC METHODS
@@ -166,8 +202,27 @@ public class OrderServiceImpl implements OrderService {
             if (tableNumber == null || tableNumber.trim().isEmpty()) {
                 throw new IllegalArgumentException("Table number cannot be empty");
             }
+            
+            // Use the same table validation logic as sync version
+            int tableNum = parseTableNumber(tableNumber);
+            log.info("Creating order async for table {}", tableNum);
+            
+            if (!tableServiceClient.isTableAvailable(tableNum)) {
+                throw new TableNotAvailableException("Table " + tableNum + " is not available");
+            }
+            
             Order order = new Order(tableNumber);
-            return orderRepository.save(order);
+            Order savedOrder = orderRepository.save(order);
+            
+            try {
+                tableServiceClient.reserveTable(tableNum, savedOrder.getId());
+                log.info("Successfully reserved table {} for async order {}", tableNum, savedOrder.getId());
+            } catch (Exception e) {
+                log.error("Failed to reserve table {} for async order {}: {}", tableNum, savedOrder.getId(), e.getMessage());
+                throw new TableNotAvailableException("Failed to reserve table " + tableNum);
+            }
+            
+            return savedOrder;
         });
     }
 
@@ -191,7 +246,19 @@ public class OrderServiceImpl implements OrderService {
         return CompletableFuture.supplyAsync(() -> {
             Order order = findOrderByIdOrThrow(orderId);
             order.completeOrder();
-            return orderRepository.save(order);
+            Order savedOrder = orderRepository.save(order);
+            
+            // Release the table when order is completed
+            try {
+                int tableNum = parseTableNumber(order.getTableNumber());
+                tableServiceClient.releaseTable(tableNum, orderId);
+                log.info("Released table {} after completing async order {}", tableNum, orderId);
+            } catch (Exception e) {
+                log.error("Failed to release table for async order {}: {}", orderId, e.getMessage());
+                // Don't throw exception here as order completion should succeed
+            }
+            
+            return savedOrder;
         });
     }
 
@@ -199,5 +266,30 @@ public class OrderServiceImpl implements OrderService {
     private Order findOrderByIdOrThrow(UUID orderId) {
         return findOrderById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+    
+    /**
+     * Parse table number from string format to integer
+     * Handles various formats like "T1", "Table 1", "1", etc.
+     */
+    private int parseTableNumber(String tableNumber) {
+        if (tableNumber == null || tableNumber.trim().isEmpty()) {
+            throw new IllegalArgumentException("Table number cannot be empty");
+        }
+        
+        String cleaned = tableNumber.trim().toUpperCase();
+        
+        // Extract numeric part from various formats using regex
+        String numericPart = cleaned.replaceAll("[^0-9]", "");
+        
+        if (numericPart.isEmpty()) {
+            throw new IllegalArgumentException("No numeric part found in table number: " + tableNumber);
+        }
+        
+        try {
+            return Integer.parseInt(numericPart);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid table number format: " + tableNumber);
+        }
     }
 } 
