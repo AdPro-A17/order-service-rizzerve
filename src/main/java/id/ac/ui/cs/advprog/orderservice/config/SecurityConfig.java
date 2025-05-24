@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/orders/async").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/orders/async/{orderId}/items").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/orders/async/{orderId}/complete").permitAll()
+                        .requestMatchers("/api/checkouts/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()

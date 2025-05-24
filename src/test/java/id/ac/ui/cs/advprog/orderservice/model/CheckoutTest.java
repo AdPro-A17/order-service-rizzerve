@@ -6,19 +6,20 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class CheckoutTest {
     private Checkout checkout;
-    private List<OrderItem> orderItems;
+    private List<OrderItem> items;
     private OrderItem item1;
     private OrderItem item2;
 
     @BeforeEach
     public void setUp() {
         checkout = new Checkout();
-        orderItems = new ArrayList<>();
+        items = new ArrayList<>();
 
         item1 = new OrderItem();
         item1.setMenuItemId(UUID.randomUUID());
@@ -34,68 +35,77 @@ class CheckoutTest {
         item2.setPrice(25000.0);
         item2.setSubtotal(25000.0);
 
-        orderItems.add(item1);
-        orderItems.add(item2);
-    }
-
-    @Test
-    void testCheckoutConstructor() {
-        assertNotNull(checkout.getId(), "ID should be automatically generated");
+        items.add(item1);
+        items.add(item2);
     }
 
     @Test
     void testSetAndGetId() {
         UUID newId = UUID.randomUUID();
         checkout.setId(newId);
-        assertEquals(newId, checkout.getId(), "ID getter should return the set ID");
+        assertEquals(newId, checkout.getId());
     }
 
     @Test
-    void testSetAndGetOrderItems() {
-        checkout.setOrderItems(orderItems);
-        assertEquals(orderItems, checkout.getOrderItems(), "OrderItems getter should return the set items");
-        assertEquals(2, checkout.getOrderItems().size(), "OrderItems size should match");
+    void testSetAndGetItems() {
+        checkout.setItems(items);
+        assertEquals(items, checkout.getItems());
+        assertEquals(2, checkout.getItems().size());
     }
 
     @Test
     void testSetAndGetTotalPrice() {
         double totalPrice = 125000.0;
         checkout.setTotalPrice(totalPrice);
-        assertEquals(totalPrice, checkout.getTotalPrice(), "TotalPrice getter should return the set value");
+        assertEquals(totalPrice, checkout.getTotalPrice());
     }
 
     @Test
     void testSetAndGetCouponCode() {
         String couponCode = "SAVE10";
         checkout.setCouponCode(couponCode);
-        assertEquals(couponCode, checkout.getCouponCode(), "CouponCode getter should return the set code");
+        assertEquals(couponCode, checkout.getCouponCode());
     }
 
     @Test
     void testSetAndGetDiscountAmount() {
         double discountAmount = 12500.0;
         checkout.setDiscountAmount(discountAmount);
-        assertEquals(discountAmount, checkout.getDiscountAmount(), "DiscountAmount getter should return the set value");
+        assertEquals(discountAmount, checkout.getDiscountAmount());
     }
 
     @Test
     void testSetAndGetFinalPrice() {
         double finalPrice = 112500.0;
         checkout.setFinalPrice(finalPrice);
-        assertEquals(finalPrice, checkout.getFinalPrice(), "FinalPrice getter should return the set value");
+        assertEquals(finalPrice, checkout.getFinalPrice());
     }
 
     @Test
     void testSetAndGetTableNumber() {
         String tableNumber = "A12";
         checkout.setTableNumber(tableNumber);
-        assertEquals(tableNumber, checkout.getTableNumber(), "TableNumber getter should return the set value");
+        assertEquals(tableNumber, checkout.getTableNumber());
     }
 
     @Test
-    void testSetAndGetCustomerId() {
-        UUID customerId = UUID.randomUUID();
-        checkout.setCustomerId(customerId);
-        assertEquals(customerId, checkout.getCustomerId(), "CustomerId getter should return the set ID");
+    void testSetAndGetStatus() {
+        String status = "COMPLETED";
+        checkout.setStatus(status);
+        assertEquals(status, checkout.getStatus());
+    }
+
+    @Test
+    void testSetAndGetCreatedAt() {
+        LocalDateTime now = LocalDateTime.now();
+        checkout.setCreatedAt(now);
+        assertEquals(now, checkout.getCreatedAt());
+    }
+
+    @Test
+    void testSetAndGetUpdatedAt() {
+        LocalDateTime now = LocalDateTime.now();
+        checkout.setUpdatedAt(now);
+        assertEquals(now, checkout.getUpdatedAt());
     }
 }

@@ -7,35 +7,27 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-// Test individual concrete states
 class NewOrderStateTest {
-
     private Order order;
     private OrderState state;
 
     @BeforeEach
     void setUp() {
-        // Use a real Order object to test state transitions correctly
         order = new Order("T1");
-        state = order.getState(); // Should be NewOrderState initially
+        state = order.getState();
         assertTrue(state instanceof NewOrderState);
     }
 
     @Test
     void testConfirmOrder_TransitionToProcessing() {
         state.confirmOrder();
-        // Verify that the order's state was changed to ProcessingOrderState
         assertTrue(order.getState() instanceof ProcessingOrderState);
         assertEquals("PROCESSING", order.getStatus());
     }
 
     @Test
     void testCompleteOrder_InvalidTransition() {
-        // A new order cannot be directly completed
-        assertThrows(IllegalStateException.class, () -> {
-            state.completeOrder();
-        });
-        // Verify state did not change
+        assertThrows(IllegalStateException.class, () -> state.completeOrder());
         assertTrue(order.getState() instanceof NewOrderState);
     }
 
@@ -45,7 +37,6 @@ class NewOrderStateTest {
     }
 }
 
-
 class ProcessingOrderStateTest {
     private Order order;
     private OrderState state;
@@ -53,7 +44,6 @@ class ProcessingOrderStateTest {
     @BeforeEach
     void setUp() {
         order = new Order("T2");
-        // Manually set the state to Processing for this test class
         order.setState(new ProcessingOrderState(order));
         state = order.getState();
         assertTrue(state instanceof ProcessingOrderState);
@@ -61,9 +51,8 @@ class ProcessingOrderStateTest {
 
     @Test
     void testConfirmOrder_InvalidTransition() {
-         assertThrows(IllegalStateException.class, () -> state.confirmOrder());
-         // Verify state remains Processing
-         assertTrue(order.getState() instanceof ProcessingOrderState);
+        assertThrows(IllegalStateException.class, () -> state.confirmOrder());
+        assertTrue(order.getState() instanceof ProcessingOrderState);
     }
 
     @Test
@@ -73,7 +62,7 @@ class ProcessingOrderStateTest {
         assertEquals("COMPLETED", order.getStatus());
     }
 
-     @Test
+    @Test
     void testGetStatusString() {
         assertEquals("PROCESSING", state.getStatus());
     }
@@ -99,13 +88,12 @@ class CompletedOrderStateTest {
 
     @Test
     void testCompleteOrder_NoTransition() {
-        // Should not throw error, maybe log? Test that state remains Completed.
         assertDoesNotThrow(() -> state.completeOrder());
         assertTrue(order.getState() instanceof CompletedOrderState);
     }
 
-     @Test
+    @Test
     void testGetStatusString() {
         assertEquals("COMPLETED", state.getStatus());
     }
-} 
+}

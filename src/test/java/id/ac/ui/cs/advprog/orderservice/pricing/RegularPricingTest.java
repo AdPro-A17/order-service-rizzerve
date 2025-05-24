@@ -12,60 +12,60 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RegularPricingTest {
-
     private RegularPricing regularPricing;
     private Checkout checkout;
+    private List<OrderItem> items;
 
     @BeforeEach
     void setUp() {
         regularPricing = new RegularPricing();
+        checkout = new Checkout();
+        items = new ArrayList<>();
 
         OrderItem item1 = new OrderItem();
         item1.setMenuItemId(UUID.randomUUID());
-        item1.setMenuItemName("Nasi Goreng");
+        item1.setMenuItemName("Burger");
         item1.setQuantity(2);
-        item1.setPrice(25000.0);
-        item1.setSubtotal(50000.0);
+        item1.setPrice(50000.0);
+        items.add(item1);
 
         OrderItem item2 = new OrderItem();
         item2.setMenuItemId(UUID.randomUUID());
-        item2.setMenuItemName("Es Teh");
-        item2.setQuantity(2);
-        item2.setPrice(5000.0);
-        item2.setSubtotal(10000.0);
+        item2.setMenuItemName("Fries");
+        item2.setQuantity(1);
+        item2.setPrice(25000.0);
+        items.add(item2);
 
-        List<OrderItem> orderItems = new ArrayList<>();
-        orderItems.add(item1);
-        orderItems.add(item2);
-
-        checkout = new Checkout();
-        checkout.setId(UUID.randomUUID());
-        checkout.setTableNumber("A1");
-        checkout.setOrderItems(orderItems);
-        checkout.setTotalPrice(60000.0);
+        checkout.setItems(items);
     }
 
     @Test
-    void calculateFinalPrice_ShouldSetZeroDiscountAndTotalPriceAsFinalPrice() {
-        regularPricing.calculateFinalPrice(checkout);
+    void testCalculateTotal() {
+        regularPricing.calculateTotal(checkout);
+
+        assertEquals(125000.0, checkout.getTotalPrice());
         assertEquals(0.0, checkout.getDiscountAmount());
-        assertEquals(60000.0, checkout.getFinalPrice());
-        assertEquals(checkout.getTotalPrice(), checkout.getFinalPrice());
+        assertEquals(125000.0, checkout.getFinalPrice());
     }
 
     @Test
-    void calculateFinalPrice_WithZeroTotalPrice_ShouldSetZeroFinalPrice() {
-        checkout.setTotalPrice(0.0);
-        regularPricing.calculateFinalPrice(checkout);
+    void testCalculateTotalWithEmptyItems() {
+        checkout.setItems(new ArrayList<>());
+        regularPricing.calculateTotal(checkout);
+
+        assertEquals(0.0, checkout.getTotalPrice());
         assertEquals(0.0, checkout.getDiscountAmount());
         assertEquals(0.0, checkout.getFinalPrice());
     }
 
     @Test
-    void calculateFinalPrice_WithNegativeTotalPrice_ShouldHandleNegativeValues() {
-        checkout.setTotalPrice(-1000.0);
-        regularPricing.calculateFinalPrice(checkout);
+    void testCalculateTotalWithZeroPrice() {
+        items.get(0).setPrice(0.0);
+        items.get(1).setPrice(0.0);
+        regularPricing.calculateTotal(checkout);
+
+        assertEquals(0.0, checkout.getTotalPrice());
         assertEquals(0.0, checkout.getDiscountAmount());
-        assertEquals(-1000.0, checkout.getFinalPrice());
+        assertEquals(0.0, checkout.getFinalPrice());
     }
 }
