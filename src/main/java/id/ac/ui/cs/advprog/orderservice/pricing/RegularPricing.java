@@ -8,6 +8,5 @@ public class RegularPricing implements PricingStrategy {
     @Override
     public void calculateTotal(Checkout checkout) {
         checkout.setDiscountAmount(0);
-        checkout.setFinalPrice(checkout.getTotalPrice());
     }
 }

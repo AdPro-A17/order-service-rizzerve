@@ -30,21 +30,12 @@ public class Checkout {
 
     private String couponCode;
     private double discountAmount;
-    private double finalPrice;
-
-    @Column(nullable = false)
-    private String status;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
-
     public Checkout() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        this.status = "SUBMITTED";
     }
 
     public void setItems(List<OrderItem> items) {

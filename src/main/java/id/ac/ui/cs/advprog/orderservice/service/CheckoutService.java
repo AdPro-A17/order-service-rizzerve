@@ -63,8 +63,31 @@ public class CheckoutService {
         Checkout checkout = new Checkout();
         checkout.setTableNumber(Integer.parseInt(order.getTableNumber()));
 
+        System.out.println("Order items before copy:");
+        order.getItems().forEach(item ->
+                System.out.println("Item ID: " + item.getId() +
+                        ", MenuItemID: " + item.getMenuItemId() +
+                        ", Name: " + item.getMenuItemName())
+        );
+
         List<OrderItem> itemsCopy = new ArrayList<>(order.getItems());
+
+        System.out.println("Items after copy:");
+        itemsCopy.forEach(item ->
+                System.out.println("Item ID: " + item.getId() +
+                        ", MenuItemID: " + item.getMenuItemId() +
+                        ", Name: " + item.getMenuItemName())
+        );
+
         checkout.setItems(itemsCopy);
+
+        System.out.println("Checkout items after setItems:");
+        checkout.getItems().forEach(item ->
+                System.out.println("Item ID: " + item.getId() +
+                        ", MenuItemID: " + item.getMenuItemId() +
+                        ", Name: " + item.getMenuItemName())
+        );
+
         checkout.setTotalPrice(order.getTotalPrice());
 
         if (request.getCouponCode() != null && !request.getCouponCode().isEmpty()) {

@@ -34,7 +34,7 @@ public class CouponPricing implements PricingStrategy {
                 if (discountedPrice != null) {
                     BigDecimal discountAmount = originalTotalPrice.subtract(discountedPrice);
                     checkout.setDiscountAmount(discountAmount.doubleValue());
-                    checkout.setFinalPrice(discountedPrice.doubleValue());
+                    checkout.setTotalPrice(discountedPrice.doubleValue());
                 } else {
                     new RegularPricing().calculateTotal(checkout);
                 }

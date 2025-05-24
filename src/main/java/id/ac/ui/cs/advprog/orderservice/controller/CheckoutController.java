@@ -54,7 +54,6 @@ public class CheckoutController {
                 .totalPrice(checkout.getTotalPrice())
                 .couponCode(checkout.getCouponCode())
                 .discountAmount(checkout.getDiscountAmount())
-                .finalPrice(checkout.getFinalPrice())
                 .build();
     }
 
