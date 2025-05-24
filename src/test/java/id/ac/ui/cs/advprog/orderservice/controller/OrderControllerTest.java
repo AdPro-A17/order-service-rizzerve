@@ -196,13 +196,4 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(orderId.toString())));
     }
-
-    @Test
-    void testCompleteOrder() throws Exception {
-        when(orderService.completeOrder(orderId)).thenReturn(testOrder);
-
-        mockMvc.perform(post("/api/orders/{orderId}/complete", orderId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(orderId.toString())));
-    }
 } 

@@ -159,29 +159,6 @@ public class OrderServiceImpl implements OrderService {
         return updatedOrder;
     }
 
-    @Override
-    @Transactional
-    public Order completeOrder(UUID orderId) {
-        Order order = findOrderByIdOrThrow(orderId);
-        
-        // Release the table when order is completed
-        try {
-            int tableNum = Integer.parseInt(order.getTableNumber());
-            tableServiceClient.releaseTable(tableNum, order.getId());
-        } catch (NumberFormatException e) {
-            // Log warning but don't fail the order completion
-            // Table service will handle cleanup via RabbitMQ events
-        } catch (Exception e) {
-            // Log warning but don't fail the order completion
-            // Table service will handle cleanup via RabbitMQ events
-        }
-        
-        order.completeOrder();
-        Order updatedOrder = orderRepository.save(order);
-        orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.COMPLETED));
-        return updatedOrder;
-    }
-
     private Order findOrderByIdOrThrow(UUID orderId) {
         return findOrderById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
     }

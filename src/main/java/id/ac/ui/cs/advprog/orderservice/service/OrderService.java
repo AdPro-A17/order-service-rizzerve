@@ -75,14 +75,4 @@ public interface OrderService {
      * @throws IllegalStateException if the order cannot be confirmed in its current state.
      */
     Order confirmOrder(UUID orderId);
-
-    /**
-     * Marks an order as completed.
-     * Delegates the action to the Order's current state.
-     * @param orderId The ID of the order to complete.
-     * @return The updated Order object.
-     * @throws OrderNotFoundException if the orderId does not exist.
-     * @throws IllegalStateException if the order cannot be completed in its current state.
-     */
-    Order completeOrder(UUID orderId);
 } 

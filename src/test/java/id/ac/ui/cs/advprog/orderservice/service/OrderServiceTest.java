@@ -136,22 +136,4 @@ class OrderServiceTest {
         verify(orderRepository, times(1)).save(order);
         verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
     }
-
-    @Test
-    void testCompleteOrder() {
-        order.confirmOrder(); // Move to PROCESSING first
-        
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
-
-        Order completedOrder = orderService.completeOrder(orderId);
-
-        assertNotNull(completedOrder);
-        assertEquals("COMPLETED", completedOrder.getStatus());
-        
-        verify(orderRepository, times(1)).findById(orderId);
-        verify(orderRepository, times(1)).save(order);
-        verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
-    }
 }
