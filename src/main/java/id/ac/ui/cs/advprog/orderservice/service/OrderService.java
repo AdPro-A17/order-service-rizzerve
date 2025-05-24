@@ -6,7 +6,6 @@ import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 public interface OrderService {
 
@@ -32,16 +31,18 @@ public interface OrderService {
 
     /**
      * Adds an item to an existing order.
-     * Fetches item details (name, price) from the menu service.
+     * Fetches item details (name, price) potentially from an external service
+     * or expects them to be provided.
      * @param orderId The ID of the order to add the item to.
      * @param menuItemId The ID of the menu item.
+     * @param menuItemName The name of the menu item.
+     * @param price The price of the menu item.
      * @param quantity The quantity of the item to add.
      * @return The updated Order object.
      * @throws OrderNotFoundException if the orderId does not exist.
-     * @throws MenuItemNotFoundException if the menuItemId does not exist or is unavailable.
      * @throws IllegalArgumentException if quantity is invalid.
      */
-    Order addItemToOrder(UUID orderId, UUID menuItemId, int quantity);
+    Order addItemToOrder(UUID orderId, UUID menuItemId, String menuItemName, double price, int quantity);
 
     /**
      * Updates the quantity of an existing item within an order.
@@ -84,33 +85,4 @@ public interface OrderService {
      * @throws IllegalStateException if the order cannot be completed in its current state.
      */
     Order completeOrder(UUID orderId);
-
-    // ASYNC METHODS
-
-    /**
-     * Asynchronously get all orders
-     */
-    CompletableFuture<List<Order>> getAllOrdersAsync();
-
-    /**
-     * Asynchronously get an order by ID
-     */
-    CompletableFuture<Order> getOrderByIdAsync(UUID orderId);
-
-    /**
-     * Asynchronously create a new order
-     */
-    CompletableFuture<Order> createOrderAsync(String tableNumber);
-
-    /**
-     * Asynchronously add item to order
-     */
-    CompletableFuture<Order> addItemToOrderAsync(UUID orderId, UUID menuItemId, int quantity);
-
-    /**
-     * Asynchronously complete an order
-     */
-    CompletableFuture<Order> completeOrderAsync(UUID orderId);
-
-    // Define custom exception classes if needed (e.g., OrderNotFoundException, OrderItemNotFoundException)
 } 
