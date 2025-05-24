@@ -4,10 +4,12 @@ import id.ac.ui.cs.advprog.orderservice.dto.OrderDetailsEvent;
 import id.ac.ui.cs.advprog.orderservice.dto.OrderItemSummaryDto;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
+import id.ac.ui.cs.advprog.orderservice.exception.TableNotAvailableException;
 import id.ac.ui.cs.advprog.orderservice.observer.OrderEventPublisher;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
+import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,11 +25,13 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderEventPublisher orderEventPublisher;
+    private final TableServiceClient tableServiceClient;
 
     @Autowired
-    public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher) {
+    public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher, TableServiceClient tableServiceClient) {
         this.orderRepository = orderRepository;
         this.orderEventPublisher = orderEventPublisher;
+        this.tableServiceClient = tableServiceClient;
     }
 
     private OrderDetailsEvent mapToOrderDetailsEvent(Order order, OrderDetailsEvent.EventType eventType) {
@@ -55,8 +59,32 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order createOrder(String tableNumber) {
+        // Validate table number format
+        int tableNum;
+        try {
+            tableNum = Integer.parseInt(tableNumber);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid table number format: " + tableNumber);
+        }
+        
+        // Check if table is available
+        if (!tableServiceClient.isTableAvailable(tableNum)) {
+            throw new TableNotAvailableException("Table " + tableNumber + " is not available or already occupied");
+        }
+        
+        // Create the order
         Order order = new Order(tableNumber);
         Order savedOrder = orderRepository.save(order);
+        
+        // Reserve the table and set active order details
+        try {
+            tableServiceClient.reserveTable(tableNum, savedOrder.getId());
+        } catch (Exception e) {
+            // If table reservation fails, delete the order and rethrow
+            orderRepository.delete(savedOrder);
+            throw new TableNotAvailableException("Failed to reserve table " + tableNumber + ": " + e.getMessage());
+        }
+        
         orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(savedOrder, OrderDetailsEvent.EventType.CREATED));
         return savedOrder;
     }
@@ -135,6 +163,19 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Order completeOrder(UUID orderId) {
         Order order = findOrderByIdOrThrow(orderId);
+        
+        // Release the table when order is completed
+        try {
+            int tableNum = Integer.parseInt(order.getTableNumber());
+            tableServiceClient.releaseTable(tableNum, order.getId());
+        } catch (NumberFormatException e) {
+            // Log warning but don't fail the order completion
+            // Table service will handle cleanup via RabbitMQ events
+        } catch (Exception e) {
+            // Log warning but don't fail the order completion
+            // Table service will handle cleanup via RabbitMQ events
+        }
+        
         order.completeOrder();
         Order updatedOrder = orderRepository.save(order);
         orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.COMPLETED));
