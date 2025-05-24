@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.orderservice.dto.AddOrderItemRequest;
 import id.ac.ui.cs.advprog.orderservice.dto.CreateOrderRequest;
 import id.ac.ui.cs.advprog.orderservice.dto.OrderResponse;
 import id.ac.ui.cs.advprog.orderservice.dto.UpdateQuantityRequest;
+import id.ac.ui.cs.advprog.orderservice.exception.MenuItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
@@ -11,10 +12,12 @@ import id.ac.ui.cs.advprog.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @RestController
@@ -24,12 +27,14 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    // Customer creates order by selecting table
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody CreateOrderRequest request) {
         Order order = orderService.createOrder(request.getTableNumber());
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToOrderResponse(order));
     }
 
+    // Customer can view their order
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID orderId) {
         return orderService.findOrderById(orderId)
@@ -37,7 +42,9 @@ public class OrderController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // Admin can view all orders (restaurant dashboard)
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
         List<OrderResponse> orders = orderService.findAllOrders().stream()
                 .map(this::mapToOrderResponse)
@@ -45,6 +52,7 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
+    // Customer adds items to order (menu selection)
     @PostMapping("/{orderId}/items")
     public ResponseEntity<OrderResponse> addItemToOrder(
             @PathVariable UUID orderId,
@@ -53,16 +61,17 @@ public class OrderController {
             Order updatedOrder = orderService.addItemToOrder(
                     orderId,
                     request.getMenuItemId(),
-                    request.getMenuItemName(),
-                    request.getPrice(),
                     request.getQuantity()
             );
             return ResponseEntity.ok(mapToOrderResponse(updatedOrder));
         } catch (OrderNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (MenuItemNotFoundException e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 
+    // Customer can update item quantities
     @PutMapping("/{orderId}/items/{itemId}")
     public ResponseEntity<OrderResponse> updateItemQuantity(
             @PathVariable UUID orderId,
@@ -76,6 +85,7 @@ public class OrderController {
         }
     }
 
+    // Customer can remove items from order (before checkout)
     @DeleteMapping("/{orderId}/items/{itemId}")
     public ResponseEntity<OrderResponse> removeItemFromOrder(
             @PathVariable UUID orderId,
@@ -88,6 +98,7 @@ public class OrderController {
         }
     }
 
+    // Customer can confirm order (checkout)
     @PostMapping("/{orderId}/confirm")
     public ResponseEntity<OrderResponse> confirmOrder(@PathVariable UUID orderId) {
         try {
@@ -100,6 +111,7 @@ public class OrderController {
         }
     }
 
+    // Mark order as complete
     @PostMapping("/{orderId}/complete")
     public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {
         try {
@@ -110,6 +122,48 @@ public class OrderController {
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    // ASYNC ENDPOINTS
+
+    @GetMapping("/async")
+    public CompletableFuture<ResponseEntity<List<OrderResponse>>> getAllOrdersAsync() {
+        return orderService.getAllOrdersAsync()
+                .thenApply(orders -> ResponseEntity.ok(orders.stream()
+                        .map(this::mapToOrderResponse)
+                        .collect(Collectors.toList())));
+    }
+
+    @GetMapping("/async/{id}")
+    public CompletableFuture<ResponseEntity<OrderResponse>> getOrderByIdAsync(@PathVariable UUID id) {
+        return orderService.getOrderByIdAsync(id)
+                .thenApply(order -> order != null ? 
+                    ResponseEntity.ok(mapToOrderResponse(order)) : 
+                    ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/async")
+    public CompletableFuture<ResponseEntity<OrderResponse>> createOrderAsync(@RequestBody CreateOrderRequest request) {
+        return orderService.createOrderAsync(request.getTableNumber())
+                .thenApply(order -> new ResponseEntity<>(mapToOrderResponse(order), HttpStatus.CREATED));
+    }
+
+    @PostMapping("/async/{orderId}/items")
+    public CompletableFuture<ResponseEntity<OrderResponse>> addItemToOrderAsync(
+            @PathVariable UUID orderId,
+            @RequestBody AddOrderItemRequest request) {
+        return orderService.addItemToOrderAsync(
+                orderId,
+                request.getMenuItemId(),
+                request.getQuantity())
+                .thenApply(order -> ResponseEntity.ok(mapToOrderResponse(order)));
+    }
+
+    @PostMapping("/async/{orderId}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public CompletableFuture<ResponseEntity<OrderResponse>> completeOrderAsync(@PathVariable UUID orderId) {
+        return orderService.completeOrderAsync(orderId)
+                .thenApply(order -> ResponseEntity.ok(mapToOrderResponse(order)));
     }
 
     private OrderResponse mapToOrderResponse(Order order) {

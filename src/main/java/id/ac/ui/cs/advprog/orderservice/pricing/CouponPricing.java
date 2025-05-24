@@ -30,8 +30,11 @@ public class CouponPricing implements PricingStrategy {
                 if (discountedPrice != null) {
                     checkout.setDiscountAmount(checkout.getTotalPrice() - discountedPrice);
                     checkout.setFinalPrice(discountedPrice);
+                } else {
+                    new RegularPricing().calculateTotal(checkout);
                 }
             } catch (Exception e) {
+                System.err.println("Error applying coupon " + checkout.getCouponCode() + ": " + e.getMessage()); // Use proper logger in real app
                 new RegularPricing().calculateTotal(checkout);
             }
         } else {

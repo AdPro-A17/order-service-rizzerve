@@ -74,17 +74,10 @@ public class CheckoutService {
         return checkoutRepository.findByTableNumber(tableNumber);
     }
 
-    public List<Checkout> getCheckoutsByStatus(String status) {
-        return checkoutRepository.findByStatus(status);
-    }
-
     @Transactional
     public Checkout updateStatus(UUID checkoutId, String status) {
         Checkout checkout = checkoutRepository.findById(checkoutId)
                 .orElseThrow(() -> new IllegalArgumentException("Checkout not found"));
-
-        checkout.setStatus(status);
-        checkout.setUpdatedAt(LocalDateTime.now());
 
         if ("COMPLETED".equals(status)) {
             List<Order> orders = orderRepository.findByTableNumber(String.valueOf(checkout.getTableNumber()));

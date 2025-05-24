@@ -7,5 +7,4 @@ import java.util.UUID;
 
 public interface CheckoutRepository extends JpaRepository<Checkout, UUID> {
     List<Checkout> findByTableNumber(int tableNumber);
-    List<Checkout> findByStatus(String status);
 }
