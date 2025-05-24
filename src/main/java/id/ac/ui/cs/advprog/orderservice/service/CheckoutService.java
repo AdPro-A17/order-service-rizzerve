@@ -1,21 +1,22 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
+import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
 import id.ac.ui.cs.advprog.orderservice.dto.CheckoutRequest;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
-import id.ac.ui.cs.advprog.orderservice.model.Order;
+import id.ac.ui.cs.advprog.orderservice.model.*;
 import id.ac.ui.cs.advprog.orderservice.pricing.CouponPricing;
 import id.ac.ui.cs.advprog.orderservice.pricing.PricingContext;
 import id.ac.ui.cs.advprog.orderservice.pricing.RegularPricing;
 import id.ac.ui.cs.advprog.orderservice.repository.CheckoutRepository;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.time.LocalDateTime;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 public class CheckoutService {
@@ -43,39 +44,33 @@ public class CheckoutService {
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
 
+        if (!"NEW".equals(order.getStatus())) {
+            throw new InvalidOrderStatusForCheckoutException(order.getStatus());
+        }
+
+        order.confirmOrder();
+
         Checkout checkout = new Checkout();
-        checkout.setTableNumber(order.getTableNumber());
-        checkout.setItems(order.getItems());
+        checkout.setTableNumber(Integer.parseInt(order.getTableNumber()));
+
+        List<OrderItem> itemsCopy = new ArrayList<>(order.getItems());
+        checkout.setItems(itemsCopy);
+        checkout.setTotalPrice(order.getTotalPrice());
 
         if (request.getCouponCode() != null && !request.getCouponCode().isEmpty()) {
-            checkout.setCouponCode(request.getCouponCode());
             pricingContext.setStrategy(couponPricing);
+            checkout.setCouponCode(request.getCouponCode());
         } else {
             pricingContext.setStrategy(regularPricing);
         }
 
         pricingContext.calculateTotal(checkout);
 
-        order.getItems().clear();
         orderRepository.save(order);
-
         return checkoutRepository.save(checkout);
     }
 
-    @Async
-    public CompletableFuture<Void> asyncUpdateTotal(Checkout checkout) {
-        if (checkout.getCouponCode() != null && !checkout.getCouponCode().isEmpty()) {
-            pricingContext.setStrategy(couponPricing);
-        } else {
-            pricingContext.setStrategy(regularPricing);
-        }
-
-        pricingContext.calculateTotal(checkout);
-        checkoutRepository.save(checkout);
-        return CompletableFuture.completedFuture(null);
-    }
-
-    public List<Checkout> getCheckoutsByTable(String tableNumber) {
+    public List<Checkout> getCheckoutsByTable(int tableNumber) {
         return checkoutRepository.findByTableNumber(tableNumber);
     }
 
@@ -90,6 +85,16 @@ public class CheckoutService {
 
         checkout.setStatus(status);
         checkout.setUpdatedAt(LocalDateTime.now());
+
+        if ("COMPLETED".equals(status)) {
+            List<Order> orders = orderRepository.findByTableNumber(String.valueOf(checkout.getTableNumber()));
+            if (!orders.isEmpty()) {
+                Order order = orders.get(0);
+                order.completeOrder();
+                orderRepository.save(order);
+            }
+        }
+
         return checkoutRepository.save(checkout);
     }
 }

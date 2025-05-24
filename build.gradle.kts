@@ -44,6 +44,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    testImplementation("org.mockito:mockito-junit-jupiter")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("io.github.cdimascio:dotenv-java:2.3.2")
     developmentOnly("org.springframework.boot:spring-boot-devtools")

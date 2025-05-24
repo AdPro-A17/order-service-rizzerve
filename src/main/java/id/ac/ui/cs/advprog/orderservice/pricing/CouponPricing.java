@@ -1,34 +1,40 @@
 package id.ac.ui.cs.advprog.orderservice.pricing;
 
-import id.ac.ui.cs.advprog.orderservice.model.Checkout;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 
 @Component
 public class CouponPricing implements PricingStrategy {
-
     private final RestTemplate restTemplate;
-    private final String couponServiceUrl;
 
-    @Autowired
-    public CouponPricing(RestTemplate restTemplate, @Value("${coupon-service.url}") String couponServiceUrl) {
+    @Value("${coupon-service.url}")
+    private String couponServiceBaseUrl;
+
+    public CouponPricing(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
-        this.couponServiceUrl = couponServiceUrl;
     }
 
     @Override
     public void calculateTotal(Checkout checkout) {
-        try {
-            String url = couponServiceUrl + "/coupon/" + checkout.getCouponCode() + "/apply?total=" + checkout.getTotalPrice();
-            Double finalPrice = restTemplate.postForObject(url, null, Double.class);
+        if (checkout.getCouponCode() != null && !checkout.getCouponCode().isEmpty()) {
+            try {
+                String couponServiceUrl = couponServiceBaseUrl + "/" + checkout.getCouponCode() + "/apply";
+                Double discountedPrice = restTemplate.postForObject(
+                        couponServiceUrl,
+                        checkout.getTotalPrice(),
+                        Double.class
+                );
 
-            if (finalPrice != null) {
-                checkout.setDiscountAmount(checkout.getTotalPrice() - finalPrice);
-                checkout.setFinalPrice(finalPrice);
+                if (discountedPrice != null) {
+                    checkout.setDiscountAmount(checkout.getTotalPrice() - discountedPrice);
+                    checkout.setFinalPrice(discountedPrice);
+                }
+            } catch (Exception e) {
+                new RegularPricing().calculateTotal(checkout);
             }
-        } catch (Exception e) {
+        } else {
             new RegularPricing().calculateTotal(checkout);
         }
     }

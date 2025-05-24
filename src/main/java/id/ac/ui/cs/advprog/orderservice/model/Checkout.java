@@ -3,7 +3,9 @@ package id.ac.ui.cs.advprog.orderservice.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,10 +19,11 @@ public class Checkout {
     private UUID id;
 
     @Column(nullable = false)
-    private String tableNumber;
+    private int tableNumber;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> items;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "checkout_id")
+    private List<OrderItem> items = new ArrayList<>();
 
     @Column(nullable = false)
     private double totalPrice;
@@ -42,5 +45,12 @@ public class Checkout {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.status = "SUBMITTED";
+    }
+
+    public void setItems(List<OrderItem> items) {
+        this.items.clear();
+        if (items != null) {
+            this.items.addAll(items);
+        }
     }
 }
