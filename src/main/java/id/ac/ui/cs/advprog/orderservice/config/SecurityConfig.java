@@ -38,7 +38,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders/{orderId}").permitAll() 
                         .requestMatchers(HttpMethod.POST, "/api/orders/{orderId}/items").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/orders/{orderId}/items/manual").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/orders/{orderId}/items/{itemId}").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/orders/{orderId}/items/{itemId}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/orders/{orderId}/confirm").permitAll()
                         // Customer async endpoints - no authentication required
                         .requestMatchers(HttpMethod.GET, "/api/orders/async").permitAll()
