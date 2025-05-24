@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.orderservice.dto.OrderDetailsEvent;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.observer.OrderEventPublisher;
+import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
@@ -20,6 +21,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +33,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderEventPublisher orderEventPublisher;
+
+    @Mock
+    private TableServiceClient tableServiceClient;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -55,24 +61,31 @@ class OrderServiceTest {
 
     @Test
     void testCreateOrder() {
+        // Mock table service calls
+        when(tableServiceClient.isTableAvailable(1)).thenReturn(true);
+        doNothing().when(tableServiceClient).reserveTable(eq(1), any(UUID.class));
+        
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order savedOrder = invocation.getArgument(0);
             if (savedOrder.getId() == null) {
                 savedOrder.setId(UUID.randomUUID());
             }
-            assertEquals("T1", savedOrder.getTableNumber());
+            assertEquals("1", savedOrder.getTableNumber());
             return savedOrder;
         });
         doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
 
-        Order createdOrder = orderService.createOrder("T1");
+        Order createdOrder = orderService.createOrder("1");
 
         assertNotNull(createdOrder);
         assertNotNull(createdOrder.getId());
-        assertEquals("T1", createdOrder.getTableNumber());
+        assertEquals("1", createdOrder.getTableNumber());
         assertEquals("NEW", createdOrder.getStatus());
         assertTrue(createdOrder.getItems().isEmpty());
         assertEquals(0.0, createdOrder.getTotalPrice());
+        
+        verify(tableServiceClient, times(1)).isTableAvailable(1);
+        verify(tableServiceClient, times(1)).reserveTable(eq(1), any(UUID.class));
         verify(orderRepository, times(1)).save(any(Order.class));
         verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
     }
@@ -127,6 +140,7 @@ class OrderServiceTest {
     @Test
     void testCompleteOrder() {
         order.confirmOrder(); // Move to PROCESSING first
+        
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));
@@ -135,6 +149,7 @@ class OrderServiceTest {
 
         assertNotNull(completedOrder);
         assertEquals("COMPLETED", completedOrder.getStatus());
+        
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, times(1)).save(order);
         verify(orderEventPublisher, times(1)).publishOrderEvent(any(OrderDetailsEvent.class));
