@@ -1,12 +1,15 @@
 package id.ac.ui.cs.advprog.orderservice.controller;
 
+import id.ac.ui.cs.advprog.orderservice.client.MenuServiceClient;
 import id.ac.ui.cs.advprog.orderservice.dto.AddOrderItemRequest;
 import id.ac.ui.cs.advprog.orderservice.dto.CreateOrderRequest;
+import id.ac.ui.cs.advprog.orderservice.dto.OrderItemRequest;
 import id.ac.ui.cs.advprog.orderservice.dto.OrderResponse;
 import id.ac.ui.cs.advprog.orderservice.dto.UpdateQuantityRequest;
 import id.ac.ui.cs.advprog.orderservice.exception.MenuItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
+import id.ac.ui.cs.advprog.orderservice.exception.TableNotAvailableException;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -14,10 +17,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,12 +29,19 @@ import java.util.stream.Collectors;
 public class OrderController {
 
     private final OrderService orderService;
+    private final MenuServiceClient menuServiceClient;
 
     // Customer creates order by selecting table
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody CreateOrderRequest request) {
-        Order order = orderService.createOrder(request.getTableNumber());
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapToOrderResponse(order));
+        try {
+            Order order = orderService.createOrder(request.getTableNumber());
+            return ResponseEntity.status(HttpStatus.CREATED).body(mapToOrderResponse(order));
+        } catch (TableNotAvailableException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     // Customer can view their order
@@ -52,22 +62,54 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    // Customer adds items to order (menu selection)
+    // Customer adds items to order (menu selection) - Auto-fetch menu details
     @PostMapping("/{orderId}/items")
     public ResponseEntity<OrderResponse> addItemToOrder(
             @PathVariable UUID orderId,
-            @RequestBody AddOrderItemRequest request) {
+            @RequestBody OrderItemRequest request) {
         try {
+            // Fetch menu item details from menu service
+            MenuServiceClient.MenuItemResponse menuItem = menuServiceClient.getMenuItemById(request.getMenuItemId());
+            if (menuItem == null) {
+                throw new MenuItemNotFoundException(request.getMenuItemId());
+            }
+            
+            // Check if item is available
+            if (menuItem.getAvailable() == null || !menuItem.getAvailable()) {
+                throw new MenuItemNotFoundException(request.getMenuItemId(), "Item is not available");
+            }
+            
             Order updatedOrder = orderService.addItemToOrder(
                     orderId,
                     request.getMenuItemId(),
+                    menuItem.getName(),
+                    menuItem.getPrice(),
                     request.getQuantity()
             );
             return ResponseEntity.ok(mapToOrderResponse(updatedOrder));
         } catch (OrderNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (MenuItemNotFoundException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    // Alternative endpoint for backward compatibility (keeps old AddOrderItemRequest format)
+    @PostMapping("/{orderId}/items/manual")
+    public ResponseEntity<OrderResponse> addItemToOrderManual(
+            @PathVariable UUID orderId,
+            @RequestBody AddOrderItemRequest request) {
+        try {
+            Order updatedOrder = orderService.addItemToOrder(
+                    orderId,
+                    request.getMenuItemId(),
+                    request.getMenuItemName(),
+                    request.getPrice(),
+                    request.getQuantity()
+            );
+            return ResponseEntity.ok(mapToOrderResponse(updatedOrder));
+        } catch (OrderNotFoundException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 
@@ -122,48 +164,6 @@ public class OrderController {
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().build();
         }
-    }
-
-    // ASYNC ENDPOINTS
-
-    @GetMapping("/async")
-    public CompletableFuture<ResponseEntity<List<OrderResponse>>> getAllOrdersAsync() {
-        return orderService.getAllOrdersAsync()
-                .thenApply(orders -> ResponseEntity.ok(orders.stream()
-                        .map(this::mapToOrderResponse)
-                        .collect(Collectors.toList())));
-    }
-
-    @GetMapping("/async/{id}")
-    public CompletableFuture<ResponseEntity<OrderResponse>> getOrderByIdAsync(@PathVariable UUID id) {
-        return orderService.getOrderByIdAsync(id)
-                .thenApply(order -> order != null ? 
-                    ResponseEntity.ok(mapToOrderResponse(order)) : 
-                    ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("/async")
-    public CompletableFuture<ResponseEntity<OrderResponse>> createOrderAsync(@RequestBody CreateOrderRequest request) {
-        return orderService.createOrderAsync(request.getTableNumber())
-                .thenApply(order -> new ResponseEntity<>(mapToOrderResponse(order), HttpStatus.CREATED));
-    }
-
-    @PostMapping("/async/{orderId}/items")
-    public CompletableFuture<ResponseEntity<OrderResponse>> addItemToOrderAsync(
-            @PathVariable UUID orderId,
-            @RequestBody AddOrderItemRequest request) {
-        return orderService.addItemToOrderAsync(
-                orderId,
-                request.getMenuItemId(),
-                request.getQuantity())
-                .thenApply(order -> ResponseEntity.ok(mapToOrderResponse(order)));
-    }
-
-    @PostMapping("/async/{orderId}/complete")
-    @PreAuthorize("hasRole('ADMIN')")
-    public CompletableFuture<ResponseEntity<OrderResponse>> completeOrderAsync(@PathVariable UUID orderId) {
-        return orderService.completeOrderAsync(orderId)
-                .thenApply(order -> ResponseEntity.ok(mapToOrderResponse(order)));
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
