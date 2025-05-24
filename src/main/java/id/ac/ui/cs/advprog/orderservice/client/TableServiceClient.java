@@ -54,6 +54,8 @@ public class TableServiceClient {
                     .path("/api/table/update-status")
                     .queryParam("tableNumber", tableNumber)
                     .queryParam("status", "TERPAKAI")
+                    .queryParam("activeOrderId", orderId.toString())
+                    .queryParam("activeOrderStatus", "PENDING")
                     .toUriString();
 
             restTemplate.put(url, null);
@@ -73,6 +75,8 @@ public class TableServiceClient {
                     .path("/api/table/update-status")
                     .queryParam("tableNumber", tableNumber)
                     .queryParam("status", "TERSEDIA")
+                    .queryParam("activeOrderId", "")
+                    .queryParam("activeOrderStatus", "")
                     .toUriString();
 
             restTemplate.put(url, null);
