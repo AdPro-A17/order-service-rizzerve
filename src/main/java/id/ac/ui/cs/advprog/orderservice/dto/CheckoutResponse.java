@@ -20,5 +20,4 @@ public class CheckoutResponse {
     private String couponCode;
     private double discountAmount;
     private double finalPrice;
-    private String orderStatus;
 }

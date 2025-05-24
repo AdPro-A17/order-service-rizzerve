@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.orderservice.service.CheckoutService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
+import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException; // Import the new exception
 import org.springframework.http.HttpStatus;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 
@@ -30,6 +31,8 @@ public class CheckoutController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Pesanan sudah dibayar");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (CouponApplicationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
