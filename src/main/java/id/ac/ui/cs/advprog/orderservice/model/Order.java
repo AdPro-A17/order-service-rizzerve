@@ -5,13 +5,18 @@ import id.ac.ui.cs.advprog.orderservice.model.state.OrderState;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "orders")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 public class Order {
@@ -32,6 +37,15 @@ public class Order {
     // Using a String to store the state class name for persistence
     @Column(name = "status", nullable = false)
     private String statusString;
+
+    // Timestamp columns for auditing
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     // Transient state object - managed by the application logic
     @Transient
