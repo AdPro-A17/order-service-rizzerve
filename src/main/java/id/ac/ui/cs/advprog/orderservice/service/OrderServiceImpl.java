@@ -155,6 +155,14 @@ public class OrderServiceImpl implements OrderService {
         Order order = findOrderByIdOrThrow(orderId);
         order.confirmOrder();
         Order updatedOrder = orderRepository.save(order);
+
+        try {
+            int tableNum = Integer.parseInt(updatedOrder.getTableNumber());
+            tableServiceClient.updateTableStatus(tableNum, updatedOrder.getId(), updatedOrder.getStatus());
+        } catch (NumberFormatException e) {
+            System.out.print("Invalid table number format: {}" + updatedOrder.getTableNumber());
+        }
+
         orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
         return updatedOrder;
     }

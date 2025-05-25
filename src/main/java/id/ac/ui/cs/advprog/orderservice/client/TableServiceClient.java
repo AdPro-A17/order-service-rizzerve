@@ -104,6 +104,24 @@ public class TableServiceClient {
         }
     }
 
+    public void updateTableStatus(int tableNumber, UUID orderId, String orderStatus) {
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(tableServiceUrl)
+                    .path("/api/table/update-status")
+                    .queryParam("tableNumber", tableNumber)
+                    .queryParam("status", "TERPAKAI")
+                    .queryParam("activeOrderId", orderId.toString())
+                    .queryParam("activeOrderStatus", orderStatus)
+                    .toUriString();
+
+            restTemplate.put(url, null);
+            log.info("Updated table {} status for order {} to {}", tableNumber, orderId, orderStatus);
+        } catch (Exception e) {
+            log.error("Error updating table {} status for order {}: {}", tableNumber, orderId, e.getMessage());
+            // Don't throw exception here as order confirmation shouldn't fail due to table service issues
+        }
+    }
+
     // Response DTOs
     @Data
     public static class TableAvailabilityResponse {
