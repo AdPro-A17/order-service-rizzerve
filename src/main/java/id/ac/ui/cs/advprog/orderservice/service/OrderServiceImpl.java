@@ -111,6 +111,12 @@ public class OrderServiceImpl implements OrderService {
         order.addItem(newItem);
         Order updatedOrder = orderRepository.save(order);
         if (!"COMPLETED".equals(updatedOrder.getStatus()) && !"CANCELLED".equals(updatedOrder.getStatus())) {
+            try {
+                int tableNum = Integer.parseInt(updatedOrder.getTableNumber());
+                tableServiceClient.updateTableStatus(tableNum, updatedOrder.getId(), updatedOrder.getStatus(), updatedOrder.getTotalPrice());
+            } catch (NumberFormatException e) {
+                System.out.print("Invalid table number format: {}" + updatedOrder.getTableNumber());
+            }
             orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
         }
         return updatedOrder;
@@ -128,6 +134,12 @@ public class OrderServiceImpl implements OrderService {
         order.calculateTotalPrice();
         Order updatedOrder = orderRepository.save(order);
         if (!"COMPLETED".equals(updatedOrder.getStatus()) && !"CANCELLED".equals(updatedOrder.getStatus())) {
+            try {
+                int tableNum = Integer.parseInt(updatedOrder.getTableNumber());
+                tableServiceClient.updateTableStatus(tableNum, updatedOrder.getId(), updatedOrder.getStatus(), updatedOrder.getTotalPrice());
+            } catch (NumberFormatException e) {
+                System.out.print("Invalid table number format: {}" + updatedOrder.getTableNumber());
+            }
             orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
         }
         return updatedOrder;
@@ -144,6 +156,12 @@ public class OrderServiceImpl implements OrderService {
         order.removeItem(orderItemId);
         Order updatedOrder = orderRepository.save(order);
         if (!"COMPLETED".equals(updatedOrder.getStatus()) && !"CANCELLED".equals(updatedOrder.getStatus())) {
+            try {
+                int tableNum = Integer.parseInt(updatedOrder.getTableNumber());
+                tableServiceClient.updateTableStatus(tableNum, updatedOrder.getId(), updatedOrder.getStatus(), updatedOrder.getTotalPrice());
+            } catch (NumberFormatException e) {
+                System.out.print("Invalid table number format: {}" + updatedOrder.getTableNumber());
+            }
             orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
         }
         return updatedOrder;
@@ -158,7 +176,8 @@ public class OrderServiceImpl implements OrderService {
 
         try {
             int tableNum = Integer.parseInt(updatedOrder.getTableNumber());
-            tableServiceClient.updateTableStatus(tableNum, updatedOrder.getId(), updatedOrder.getStatus());
+            tableServiceClient.updateTableStatus(tableNum, updatedOrder.getId(), updatedOrder.getStatus(), updatedOrder.getTotalPrice());
+
         } catch (NumberFormatException e) {
             System.out.print("Invalid table number format: {}" + updatedOrder.getTableNumber());
         }

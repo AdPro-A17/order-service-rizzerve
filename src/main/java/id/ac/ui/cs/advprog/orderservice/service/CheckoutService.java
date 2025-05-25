@@ -1,7 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
 import id.ac.ui.cs.advprog.orderservice.dto.CheckoutRequest;
-import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
@@ -16,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +30,7 @@ public class CheckoutService {
     private final RegularPricing regularPricing;
     private final CouponPricing couponPricing;
     private final RestTemplate restTemplate;
+    private final TableServiceClient tableServiceClient;
 
     @Value("${order-service.url}")
     private String orderServiceBaseUrl;
@@ -41,7 +42,8 @@ public class CheckoutService {
             PricingContext pricingContext,
             RegularPricing regularPricing,
             CouponPricing couponPricing,
-            RestTemplate restTemplate
+            RestTemplate restTemplate,
+            TableServiceClient tableServiceClient
     ) {
         this.checkoutRepository = checkoutRepository;
         this.orderRepository = orderRepository;
@@ -49,6 +51,7 @@ public class CheckoutService {
         this.regularPricing = regularPricing;
         this.couponPricing = couponPricing;
         this.restTemplate = restTemplate;
+        this.tableServiceClient = tableServiceClient;
     }
 
     @Transactional
@@ -81,27 +84,12 @@ public class CheckoutService {
         orderRepository.save(order);
 
         checkoutRepository.save(checkout);
+        confirmOrderByApi(order.getId());
         return checkout;
     }
 
     public List<Checkout> getCheckoutsByTable(int tableNumber) {
         return checkoutRepository.findByTableNumber(tableNumber);
-    }
-
-    @Transactional
-    public Checkout updateStatus(UUID checkoutId, String status) {
-        Checkout checkout = checkoutRepository.findById(checkoutId)
-                .orElseThrow(() -> new IllegalArgumentException("Checkout not found"));
-
-        if ("COMPLETED".equals(status)) {
-            List<Order> orders = orderRepository.findByTableNumber(String.valueOf(checkout.getTableNumber()));
-            if (!orders.isEmpty()) {
-                Order order = orders.get(0);
-                orderRepository.save(order);
-            }
-        }
-
-        return checkoutRepository.save(checkout);
     }
 
     private void confirmOrderByApi(UUID orderId) {
