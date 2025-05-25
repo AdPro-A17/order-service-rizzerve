@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,17 +12,17 @@ import java.util.UUID;
 @Getter
 @Setter
 public class OrderItem {
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    private Order order; // Link back to the Order
+    @JsonBackReference
+    private Order order;
 
     @Column(nullable = false)
-    private UUID menuItemId; // ID of the item from Menu Service
+    private UUID menuItemId;
 
     @Column(nullable = false)
     private String menuItemName;
@@ -30,7 +31,7 @@ public class OrderItem {
     private int quantity;
 
     @Column(nullable = false)
-    private double price; // Price per unit at the time of order
+    private double price;
 
     @Column(nullable = false)
     private double subtotal;

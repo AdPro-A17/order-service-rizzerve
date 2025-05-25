@@ -1,30 +1,70 @@
 package id.ac.ui.cs.advprog.orderservice.controller;
 
-/*
- * TEMPORARILY COMMENTED OUT TO PREVENT CONFLICTS WITH HUSIN'S ORDER IMPLEMENTATION
- */
-
-/*
-import id.ac.ui.cs.advprog.orderservice.dto.CheckoutRequest;
-import id.ac.ui.cs.advprog.orderservice.dto.CheckoutResponse;
+import id.ac.ui.cs.advprog.orderservice.dto.*;
+import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 import id.ac.ui.cs.advprog.orderservice.service.CheckoutService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
+import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException; // Import the new exception
+import org.springframework.http.HttpStatus;
+import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/checkout")
-@RequiredArgsConstructor
+@RequestMapping("/api/checkouts")
 public class CheckoutController {
     private final CheckoutService checkoutService;
 
+    public CheckoutController(CheckoutService checkoutService) {
+        this.checkoutService = checkoutService;
+    }
+
     @PostMapping
-    public ResponseEntity<CheckoutResponse> checkout(@RequestBody CheckoutRequest request) {
-        CheckoutResponse response = checkoutService.processCheckout(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> createCheckout(@RequestBody CheckoutRequest request) {
+        try {
+            Checkout checkout = checkoutService.createCheckout(request);
+            return ResponseEntity.ok(mapToCheckoutResponse(checkout));
+        } catch (InvalidOrderStatusForCheckoutException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Pesanan sudah dibayar");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (CouponApplicationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/table/{tableNumber}")
+    public ResponseEntity<List<CheckoutResponse>> getCheckoutsByTable(@PathVariable int tableNumber) {
+        List<Checkout> checkouts = checkoutService.getCheckoutsByTable(tableNumber);
+        return ResponseEntity.ok(checkouts.stream()
+                .map(this::mapToCheckoutResponse)
+                .collect(Collectors.toList()));
+    }
+
+    private CheckoutResponse mapToCheckoutResponse(Checkout checkout) {
+        return CheckoutResponse.builder()
+                .checkoutId(checkout.getId())
+                .tableNumber(checkout.getTableNumber())
+                .items(checkout.getItems().stream()
+                        .map(this::mapToCheckoutItemResponse)
+                        .collect(Collectors.toList()))
+                .totalPrice(checkout.getTotalPrice())
+                .couponCode(checkout.getCouponCode())
+                .discountAmount(checkout.getDiscountAmount())
+                .build();
+    }
+
+    private CheckoutItemResponse mapToCheckoutItemResponse(OrderItem item) {
+        return CheckoutItemResponse.builder()
+                .id(item.getId())
+                .menuItemId(item.getMenuItemId())
+                .menuItemName(item.getMenuItemName())
+                .quantity(item.getQuantity())
+                .price(item.getPrice())
+                .subtotal(item.getSubtotal())
+                .build();
     }
 }
-*/

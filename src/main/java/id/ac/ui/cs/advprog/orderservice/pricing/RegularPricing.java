@@ -4,10 +4,9 @@ import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 import org.springframework.stereotype.Component;
 
 @Component
-public class RegularPricing implements CheckoutPricing {
+public class RegularPricing implements PricingStrategy {
     @Override
-    public void calculateFinalPrice(Checkout checkout) {
+    public void calculateTotal(Checkout checkout) {
         checkout.setDiscountAmount(0);
-        checkout.setFinalPrice(checkout.getTotalPrice());
     }
 }

@@ -1,39 +1,52 @@
 package id.ac.ui.cs.advprog.orderservice.pricing;
 
-import id.ac.ui.cs.advprog.orderservice.model.Checkout;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.web.client.RestTemplate;
+import id.ac.ui.cs.advprog.orderservice.model.Checkout;
+import java.math.BigDecimal;
+import org.springframework.web.client.HttpClientErrorException;
+import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 
 @Component
-public class CouponPricing implements CheckoutPricing{
-    private final Map<String, Double> couponDiscounts = new HashMap<>();
+public class CouponPricing implements PricingStrategy {
+    private final RestTemplate restTemplate;
 
-    public CouponPricing() {
-        couponDiscounts.put("SAVE10", 0.1);
-        couponDiscounts.put("SAVE20", 0.2);
-        couponDiscounts.put("HALF", 0.5);
+    @Value("${coupon-service.url}")
+    private String couponServiceBaseUrl;
+
+    public CouponPricing(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
     @Override
-    public void calculateFinalPrice(Checkout checkout) {
-        String couponCode = checkout.getCouponCode();
+    public void calculateTotal(Checkout checkout) {
+        if (checkout.getCouponCode() != null && !checkout.getCouponCode().isEmpty()) {
+            BigDecimal originalTotalPrice = BigDecimal.valueOf(checkout.getTotalPrice());
+            try {
+                String applyCouponUrl = couponServiceBaseUrl + "/coupon/" + checkout.getCouponCode() + "/apply?total=" + originalTotalPrice.toPlainString(); // Use toPlainString for BigDecimal in URL
+                BigDecimal discountedPrice = restTemplate.postForObject(
+                        applyCouponUrl,
+                        null,
+                        BigDecimal.class
+                );
 
-        if (couponCode != null && !couponCode.isEmpty() && couponDiscounts.containsKey(couponCode)) {
-            double discountRate = couponDiscounts.get(couponCode);
-            double discountAmount = checkout.getTotalPrice() * discountRate;
-
-            checkout.setDiscountAmount(discountAmount);
-            checkout.setFinalPrice(checkout.getTotalPrice() - discountAmount);
+                if (discountedPrice != null) {
+                    BigDecimal discountAmount = originalTotalPrice.subtract(discountedPrice);
+                    checkout.setDiscountAmount(discountAmount.doubleValue());
+                    checkout.setTotalPrice(discountedPrice.doubleValue());
+                } else {
+                    new RegularPricing().calculateTotal(checkout);
+                }
+            } catch (HttpClientErrorException e) {
+                System.err.println("Error applying coupon " + checkout.getCouponCode() + ": " + e.getResponseBodyAsString());
+                throw new CouponApplicationException("Failed to apply coupon: " + e.getResponseBodyAsString(), e);
+            } catch (Exception e) {
+                System.err.println("Error applying coupon " + checkout.getCouponCode() + ": " + e.getMessage());
+                throw new CouponApplicationException("Failed to apply coupon: " + e.getMessage(), e);
+            }
         } else {
-
-            checkout.setDiscountAmount(0);
-            checkout.setFinalPrice(checkout.getTotalPrice());
+            new RegularPricing().calculateTotal(checkout);
         }
-    }
-
-    public boolean isValidCoupon(String couponCode) {
-        return couponCode != null && couponDiscounts.containsKey(couponCode);
     }
 }

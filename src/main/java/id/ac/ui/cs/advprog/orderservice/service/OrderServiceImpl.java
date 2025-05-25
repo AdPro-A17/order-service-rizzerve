@@ -68,13 +68,13 @@ public class OrderServiceImpl implements OrderService {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid table number format: " + tableNumber);
         }
-        
+
         // Check if table is available
         System.out.println("🔥 DEBUG: Checking if table " + tableNum + " is available");
         if (!tableServiceClient.isTableAvailable(tableNum)) {
             throw new TableNotAvailableException("Table " + tableNumber + " is not available or already occupied");
         }
-        
+
         // Create the order
         Order order = new Order(tableNumber);
         Order savedOrder = orderRepository.save(order);
@@ -155,6 +155,15 @@ public class OrderServiceImpl implements OrderService {
         Order order = findOrderByIdOrThrow(orderId);
         order.confirmOrder();
         Order updatedOrder = orderRepository.save(order);
+
+        try {
+            int tableNum = Integer.parseInt(updatedOrder.getTableNumber());
+            tableServiceClient.updateTableStatus(tableNum, updatedOrder.getId(), updatedOrder.getStatus());
+
+        } catch (NumberFormatException e) {
+            System.out.print("Invalid table number format: {}" + updatedOrder.getTableNumber());
+        }
+
         orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
         return updatedOrder;
     }
@@ -182,4 +191,5 @@ public class OrderServiceImpl implements OrderService {
     private Order findOrderByIdOrThrow(UUID orderId) {
         return findOrderById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
     }
+
 }
