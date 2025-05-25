@@ -75,4 +75,5 @@ public interface OrderService {
      * @throws IllegalStateException if the order cannot be confirmed in its current state.
      */
     Order confirmOrder(UUID orderId);
+    Order completeOrder(UUID orderId);
 } 

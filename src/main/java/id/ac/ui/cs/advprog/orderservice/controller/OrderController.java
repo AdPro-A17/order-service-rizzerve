@@ -171,4 +171,17 @@ public class OrderController {
                         .collect(Collectors.toList()))
                 .build();
     }
+
+    @PutMapping("/{orderId}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {
+        try {
+            Order completedOrder = orderService.completeOrder(orderId);
+            return ResponseEntity.ok(mapToOrderResponse(completedOrder));
+        } catch (OrderNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 } 
