@@ -1,104 +1,113 @@
 package id.ac.ui.cs.advprog.orderservice.pricing;
 
+import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
-import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
 class CouponPricingTest {
 
+    @Mock
+    private RestTemplate restTemplate;
+
+    @InjectMocks
     private CouponPricing couponPricing;
+
     private Checkout checkout;
 
     @BeforeEach
     void setUp() {
-        couponPricing = new CouponPricing();
-
-        OrderItem item1 = new OrderItem();
-        item1.setMenuItemId(UUID.randomUUID());
-        item1.setMenuItemName("Nasi Goreng");
-        item1.setQuantity(2);
-        item1.setPrice(25000.0);
-        item1.setSubtotal(50000.0);
-
-        OrderItem item2 = new OrderItem();
-        item2.setMenuItemId(UUID.randomUUID());
-        item2.setMenuItemName("Es Teh");
-        item2.setQuantity(2);
-        item2.setPrice(5000.0);
-        item2.setSubtotal(10000.0);
-
-        List<OrderItem> orderItems = new ArrayList<>();
-        orderItems.add(item1);
-        orderItems.add(item2);
+        ReflectionTestUtils.setField(couponPricing, "couponServiceBaseUrl", "http://localhost:8081");
 
         checkout = new Checkout();
-        checkout.setId(UUID.randomUUID());
-        checkout.setTableNumber("A1");
-        checkout.setOrderItems(orderItems);
-        checkout.setTotalPrice(60000.0);
+        checkout.setTotalPrice(100.0);
+        checkout.setCouponCode("DISCOUNT10");
     }
 
-    @ParameterizedTest
-    @CsvSource({
-            "SAVE10, 6000.0, 54000.0",
-            "SAVE20, 12000.0, 48000.0",
-            "HALF, 30000.0, 30000.0"
-    })
-    void calculateFinalPrice_WithValidCoupon_ShouldApplyCorrectDiscount(
-            String couponCode, double expectedDiscountAmount, double expectedFinalPrice) {
-        checkout.setCouponCode(couponCode);
-        couponPricing.calculateFinalPrice(checkout);
-        assertEquals(expectedDiscountAmount, checkout.getDiscountAmount());
-        assertEquals(expectedFinalPrice, checkout.getFinalPrice());
+    @Test
+    void calculateTotal_WithValidCoupon_AppliesDiscount() {
+        BigDecimal discountedPrice = new BigDecimal("90.00");
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenReturn(discountedPrice);
+
+        couponPricing.calculateTotal(checkout);
+
+        assertEquals(90.0, checkout.getTotalPrice());
+        assertEquals(10.0, checkout.getDiscountAmount());
+        verify(restTemplate).postForObject(contains("/coupon/DISCOUNT10/apply"), isNull(), eq(BigDecimal.class));
     }
 
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"INVALID", "WRONGCODE", "EXPIRED"})
-    void calculateFinalPrice_WithInvalidOrEmptyCoupon_ShouldNotApplyDiscount(String couponCode) {
-        checkout.setCouponCode(couponCode);
-        couponPricing.calculateFinalPrice(checkout);
+    @Test
+    void calculateTotal_WithNullCouponCode_UsesRegularPricing() {
+        checkout.setCouponCode(null);
+
+        couponPricing.calculateTotal(checkout);
 
         assertEquals(0.0, checkout.getDiscountAmount());
-        assertEquals(60000.0, checkout.getFinalPrice());
-        assertEquals(checkout.getTotalPrice(), checkout.getFinalPrice());
+        assertEquals(100.0, checkout.getTotalPrice());
+        verify(restTemplate, never()).postForObject(anyString(), any(), any());
     }
 
     @Test
-    void isValidCoupon_WithValidCoupons_ShouldReturnTrue() {
-        assertTrue(couponPricing.isValidCoupon("SAVE10"));
-        assertTrue(couponPricing.isValidCoupon("SAVE20"));
-        assertTrue(couponPricing.isValidCoupon("HALF"));
-    }
+    void calculateTotal_WithEmptyCouponCode_UsesRegularPricing() {
+        checkout.setCouponCode("");
 
-    @Test
-    void isValidCoupon_WithInvalidCoupons_ShouldReturnFalse() {
-        assertFalse(couponPricing.isValidCoupon("INVALID"));
-        assertFalse(couponPricing.isValidCoupon("save10"));
-        assertFalse(couponPricing.isValidCoupon("SAVE30"));
-    }
+        couponPricing.calculateTotal(checkout);
 
-    @Test
-    void isValidCoupon_WithNullOrEmptyCoupon_ShouldReturnFalse() {
-        assertFalse(couponPricing.isValidCoupon(null));
-        assertFalse(couponPricing.isValidCoupon(""));
-    }
-
-    @Test
-    void calculateFinalPrice_WithZeroTotalPrice_ShouldApplyDiscountCorrectly() {
-        checkout.setTotalPrice(0.0);
-        checkout.setCouponCode("SAVE10");
-        couponPricing.calculateFinalPrice(checkout);
         assertEquals(0.0, checkout.getDiscountAmount());
-        assertEquals(0.0, checkout.getFinalPrice());
+        assertEquals(100.0, checkout.getTotalPrice());
+        verify(restTemplate, never()).postForObject(anyString(), any(), any());
+    }
+
+    @Test
+    void calculateTotal_CouponServiceReturnsNull_UsesRegularPricing() {
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenReturn(null);
+
+        couponPricing.calculateTotal(checkout);
+
+        assertEquals(0.0, checkout.getDiscountAmount());
+        assertEquals(100.0, checkout.getTotalPrice());
+    }
+
+    @Test
+    void calculateTotal_HttpClientErrorException_ThrowsCouponApplicationException() {
+        HttpClientErrorException httpException = mock(HttpClientErrorException.class);
+        when(httpException.getResponseBodyAsString()).thenReturn("Invalid coupon");
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenThrow(httpException);
+
+        CouponApplicationException exception = assertThrows(CouponApplicationException.class,
+                () -> couponPricing.calculateTotal(checkout));
+
+        assertTrue(exception.getMessage().contains("Failed to apply coupon: Invalid coupon"));
+        assertEquals(httpException, exception.getCause());
+    }
+
+    @Test
+    void calculateTotal_GenericException_ThrowsCouponApplicationException() {
+        RuntimeException runtimeException = new RuntimeException("Connection timeout");
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenThrow(runtimeException);
+
+        CouponApplicationException exception = assertThrows(CouponApplicationException.class,
+                () -> couponPricing.calculateTotal(checkout));
+
+        assertTrue(exception.getMessage().contains("Failed to apply coupon: Connection timeout"));
+        assertEquals(runtimeException, exception.getCause());
     }
 }

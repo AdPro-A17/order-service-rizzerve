@@ -322,9 +322,9 @@ class OrderServiceTest {
         verify(orderRepository, times(1)).findById(orderId);
         verify(orderRepository, never()).save(any(Order.class));
         verify(orderEventPublisher, never()).publishOrderEvent(any(OrderDetailsEvent.class));
-    }
+        }
 
-   
+    
 
     @Test
     void testCompleteOrder_WhenOrderNotFound_ShouldThrowException() {

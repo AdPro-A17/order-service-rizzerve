@@ -169,13 +169,3 @@ public class Order {
 
 // Simple factory to re-create state objects from stored string status
 // This could be its own class or a static inner class
-class StateFactory {
-    public static OrderState createState(String status, Order order) {
-        return switch (status) {
-            case "NEW" -> new NewOrderState(order);
-            case "PROCESSING" -> new id.ac.ui.cs.advprog.orderservice.model.state.ProcessingOrderState(order);
-            case "COMPLETED" -> new id.ac.ui.cs.advprog.orderservice.model.state.CompletedOrderState(order);
-            default -> throw new IllegalArgumentException("Unknown order status: " + status);
-        };
-    }
-} 

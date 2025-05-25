@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.orderservice.model;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -10,92 +10,81 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CheckoutTest {
-    private Checkout checkout;
-    private List<OrderItem> orderItems;
-    private OrderItem item1;
-    private OrderItem item2;
 
-    @BeforeEach
-    public void setUp() {
-        checkout = new Checkout();
-        orderItems = new ArrayList<>();
+    @Test
+    void constructor_SetsCreatedAtToCurrentTime() {
+        LocalDateTime before = LocalDateTime.now().minusSeconds(1);
+        Checkout checkout = new Checkout();
+        LocalDateTime after = LocalDateTime.now().plusSeconds(1);
 
-        item1 = new OrderItem();
-        item1.setMenuItemId(UUID.randomUUID());
-        item1.setMenuItemName("Burger");
-        item1.setQuantity(2);
-        item1.setPrice(50000.0);
-        item1.setSubtotal(100000.0);
-
-        item2 = new OrderItem();
-        item2.setMenuItemId(UUID.randomUUID());
-        item2.setMenuItemName("Fries");
-        item2.setQuantity(1);
-        item2.setPrice(25000.0);
-        item2.setSubtotal(25000.0);
-
-        orderItems.add(item1);
-        orderItems.add(item2);
+        assertNotNull(checkout.getCreatedAt());
+        assertTrue(checkout.getCreatedAt().isAfter(before));
+        assertTrue(checkout.getCreatedAt().isBefore(after));
     }
 
     @Test
-    void testCheckoutConstructor() {
-        assertNotNull(checkout.getId(), "ID should be automatically generated");
+    void setItems_WithValidList_SetsItems() {
+        Checkout checkout = new Checkout();
+        OrderItem item1 = new OrderItem();
+        item1.setId(UUID.randomUUID());
+        OrderItem item2 = new OrderItem();
+        item2.setId(UUID.randomUUID());
+
+        List<OrderItem> items = List.of(item1, item2);
+        checkout.setItems(items);
+
+        assertEquals(2, checkout.getItems().size());
+        assertTrue(checkout.getItems().contains(item1));
+        assertTrue(checkout.getItems().contains(item2));
     }
 
     @Test
-    void testSetAndGetId() {
-        UUID newId = UUID.randomUUID();
-        checkout.setId(newId);
-        assertEquals(newId, checkout.getId(), "ID getter should return the set ID");
+    void setItems_WithNullList_ClearsItems() {
+        Checkout checkout = new Checkout();
+        OrderItem item = new OrderItem();
+        item.setId(UUID.randomUUID());
+        checkout.getItems().add(item);
+
+        checkout.setItems(null);
+
+        assertTrue(checkout.getItems().isEmpty());
     }
 
     @Test
-    void testSetAndGetOrderItems() {
-        checkout.setOrderItems(orderItems);
-        assertEquals(orderItems, checkout.getOrderItems(), "OrderItems getter should return the set items");
-        assertEquals(2, checkout.getOrderItems().size(), "OrderItems size should match");
+    void setItems_ClearsExistingItems() {
+        Checkout checkout = new Checkout();
+        OrderItem existingItem = new OrderItem();
+        existingItem.setId(UUID.randomUUID());
+        checkout.getItems().add(existingItem);
+
+        OrderItem newItem = new OrderItem();
+        newItem.setId(UUID.randomUUID());
+        checkout.setItems(List.of(newItem));
+
+        assertEquals(1, checkout.getItems().size());
+        assertTrue(checkout.getItems().contains(newItem));
+        assertFalse(checkout.getItems().contains(existingItem));
     }
 
     @Test
-    void testSetAndGetTotalPrice() {
-        double totalPrice = 125000.0;
-        checkout.setTotalPrice(totalPrice);
-        assertEquals(totalPrice, checkout.getTotalPrice(), "TotalPrice getter should return the set value");
-    }
+    void gettersAndSetters_WorkCorrectly() {
+        Checkout checkout = new Checkout();
+        UUID id = UUID.randomUUID();
+        String couponCode = "DISCOUNT10";
+        double totalPrice = 100.0;
+        double discountAmount = 10.0;
+        int tableNumber = 5;
 
-    @Test
-    void testSetAndGetCouponCode() {
-        String couponCode = "SAVE10";
+        checkout.setId(id);
         checkout.setCouponCode(couponCode);
-        assertEquals(couponCode, checkout.getCouponCode(), "CouponCode getter should return the set code");
-    }
-
-    @Test
-    void testSetAndGetDiscountAmount() {
-        double discountAmount = 12500.0;
+        checkout.setTotalPrice(totalPrice);
         checkout.setDiscountAmount(discountAmount);
-        assertEquals(discountAmount, checkout.getDiscountAmount(), "DiscountAmount getter should return the set value");
-    }
-
-    @Test
-    void testSetAndGetFinalPrice() {
-        double finalPrice = 112500.0;
-        checkout.setFinalPrice(finalPrice);
-        assertEquals(finalPrice, checkout.getFinalPrice(), "FinalPrice getter should return the set value");
-    }
-
-    @Test
-    void testSetAndGetTableNumber() {
-        String tableNumber = "A12";
         checkout.setTableNumber(tableNumber);
-        assertEquals(tableNumber, checkout.getTableNumber(), "TableNumber getter should return the set value");
-    }
 
-    @Test
-    void testSetAndGetCustomerId() {
-        UUID customerId = UUID.randomUUID();
-        checkout.setCustomerId(customerId);
-        assertEquals(customerId, checkout.getCustomerId(), "CustomerId getter should return the set ID");
+        assertEquals(id, checkout.getId());
+        assertEquals(couponCode, checkout.getCouponCode());
+        assertEquals(totalPrice, checkout.getTotalPrice());
+        assertEquals(discountAmount, checkout.getDiscountAmount());
+        assertEquals(tableNumber, checkout.getTableNumber());
     }
 }
