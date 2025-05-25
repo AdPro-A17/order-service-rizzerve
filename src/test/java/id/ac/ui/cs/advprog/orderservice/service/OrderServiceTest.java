@@ -1,8 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
 import id.ac.ui.cs.advprog.orderservice.dto.OrderDetailsEvent;
-import id.ac.ui.cs.advprog.orderservice.exception.OrderNotFoundException;
-import id.ac.ui.cs.advprog.orderservice.exception.OrderItemNotFoundException;
 import id.ac.ui.cs.advprog.orderservice.observer.OrderEventPublisher;
 import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
@@ -15,13 +13,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -109,7 +105,7 @@ class OrderServiceTest {
 
         assertNotNull(updatedOrder);
         assertEquals(1, updatedOrder.getItems().size());
-        OrderItem addedItem = updatedOrder.getItems().get(0);
+        OrderItem addedItem = updatedOrder.getItems().getFirst();
         assertNotNull(addedItem.getId());
         assertEquals(menuItemId, addedItem.getMenuItemId());
         assertEquals(itemName, addedItem.getMenuItemName());

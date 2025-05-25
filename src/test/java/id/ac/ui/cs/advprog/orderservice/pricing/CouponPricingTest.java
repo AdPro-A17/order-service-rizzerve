@@ -1,7 +1,7 @@
 package id.ac.ui.cs.advprog.orderservice.pricing;
 
+import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
-import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,15 +9,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,60 +28,86 @@ class CouponPricingTest {
     private CouponPricing couponPricing;
 
     private Checkout checkout;
-    private List<OrderItem> items;
-    private static final String COUPON_SERVICE_URL = "http://localhost:8081";
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(couponPricing, "couponServiceUrl", COUPON_SERVICE_URL);
+        ReflectionTestUtils.setField(couponPricing, "couponServiceBaseUrl", "http://localhost:8081");
 
         checkout = new Checkout();
-        items = new ArrayList<>();
-
-        OrderItem item = new OrderItem();
-        item.setMenuItemId(UUID.randomUUID());
-        item.setMenuItemName("Burger");
-        item.setQuantity(2);
-        item.setPrice(50000.0);
-        items.add(item);
-
-        checkout.setItems(items);
-        checkout.setTotalPrice(100000.0);
-        checkout.setCouponCode("SAVE10");
+        checkout.setTotalPrice(100.0);
+        checkout.setCouponCode("DISCOUNT10");
     }
 
     @Test
-    void testCalculateTotalWithValidCoupon() {
-        when(restTemplate.postForObject(
-                eq(COUPON_SERVICE_URL + "/coupon/SAVE10/apply?total=100000.0"),
-                eq(null),
-                eq(Double.class)
-        )).thenReturn(90000.0);
+    void calculateTotal_WithValidCoupon_AppliesDiscount() {
+        BigDecimal discountedPrice = new BigDecimal("90.00");
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenReturn(discountedPrice);
 
         couponPricing.calculateTotal(checkout);
 
-        assertEquals(100000.0, checkout.getTotalPrice());
-        assertEquals(10000.0, checkout.getDiscountAmount());
-        assertEquals(90000.0, checkout.getFinalPrice());
-        verify(restTemplate).postForObject(
-                eq(COUPON_SERVICE_URL + "/coupon/SAVE10/apply?total=100000.0"),
-                eq(null),
-                eq(Double.class)
-        );
+        assertEquals(90.0, checkout.getTotalPrice());
+        assertEquals(10.0, checkout.getDiscountAmount());
+        verify(restTemplate).postForObject(contains("/coupon/DISCOUNT10/apply"), isNull(), eq(BigDecimal.class));
     }
 
     @Test
-    void testCalculateTotalWithInvalidCoupon() {
-        when(restTemplate.postForObject(
-                any(String.class),
-                eq(null),
-                eq(Double.class)
-        )).thenThrow(new RuntimeException("Coupon not found"));
+    void calculateTotal_WithNullCouponCode_UsesRegularPricing() {
+        checkout.setCouponCode(null);
 
         couponPricing.calculateTotal(checkout);
 
-        assertEquals(100000.0, checkout.getTotalPrice());
         assertEquals(0.0, checkout.getDiscountAmount());
-        assertEquals(100000.0, checkout.getFinalPrice());
+        assertEquals(100.0, checkout.getTotalPrice());
+        verify(restTemplate, never()).postForObject(anyString(), any(), any());
+    }
+
+    @Test
+    void calculateTotal_WithEmptyCouponCode_UsesRegularPricing() {
+        checkout.setCouponCode("");
+
+        couponPricing.calculateTotal(checkout);
+
+        assertEquals(0.0, checkout.getDiscountAmount());
+        assertEquals(100.0, checkout.getTotalPrice());
+        verify(restTemplate, never()).postForObject(anyString(), any(), any());
+    }
+
+    @Test
+    void calculateTotal_CouponServiceReturnsNull_UsesRegularPricing() {
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenReturn(null);
+
+        couponPricing.calculateTotal(checkout);
+
+        assertEquals(0.0, checkout.getDiscountAmount());
+        assertEquals(100.0, checkout.getTotalPrice());
+    }
+
+    @Test
+    void calculateTotal_HttpClientErrorException_ThrowsCouponApplicationException() {
+        HttpClientErrorException httpException = mock(HttpClientErrorException.class);
+        when(httpException.getResponseBodyAsString()).thenReturn("Invalid coupon");
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenThrow(httpException);
+
+        CouponApplicationException exception = assertThrows(CouponApplicationException.class,
+                () -> couponPricing.calculateTotal(checkout));
+
+        assertTrue(exception.getMessage().contains("Failed to apply coupon: Invalid coupon"));
+        assertEquals(httpException, exception.getCause());
+    }
+
+    @Test
+    void calculateTotal_GenericException_ThrowsCouponApplicationException() {
+        RuntimeException runtimeException = new RuntimeException("Connection timeout");
+        when(restTemplate.postForObject(anyString(), isNull(), eq(BigDecimal.class)))
+                .thenThrow(runtimeException);
+
+        CouponApplicationException exception = assertThrows(CouponApplicationException.class,
+                () -> couponPricing.calculateTotal(checkout));
+
+        assertTrue(exception.getMessage().contains("Failed to apply coupon: Connection timeout"));
+        assertEquals(runtimeException, exception.getCause());
     }
 }
