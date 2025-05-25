@@ -153,6 +153,20 @@ public class OrderController {
         }
     }
 
+    // Admin can complete order (mark as done)
+    @PostMapping("/{orderId}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {
+        try {
+            Order updatedOrder = orderService.completeOrder(orderId);
+            return ResponseEntity.ok(mapToOrderResponse(updatedOrder));
+        } catch (OrderNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     private OrderResponse mapToOrderResponse(Order order) {
         return OrderResponse.builder()
                 .id(order.getId())

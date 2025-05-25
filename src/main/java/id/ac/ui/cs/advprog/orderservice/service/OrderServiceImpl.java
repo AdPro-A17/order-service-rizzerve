@@ -59,6 +59,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order createOrder(String tableNumber) {
+        System.out.println("🔥 DEBUG: Creating order for table: " + tableNumber);
+        
         // Validate table number format
         int tableNum;
         try {
@@ -68,6 +70,7 @@ public class OrderServiceImpl implements OrderService {
         }
         
         // Check if table is available
+        System.out.println("🔥 DEBUG: Checking if table " + tableNum + " is available");
         if (!tableServiceClient.isTableAvailable(tableNum)) {
             throw new TableNotAvailableException("Table " + tableNumber + " is not available or already occupied");
         }
@@ -75,17 +78,14 @@ public class OrderServiceImpl implements OrderService {
         // Create the order
         Order order = new Order(tableNumber);
         Order savedOrder = orderRepository.save(order);
+        System.out.println("🔥 DEBUG: Order saved with ID: " + savedOrder.getId() + ", Status: " + savedOrder.getStatus());
         
-        // Reserve the table and set active order details
-        try {
-            tableServiceClient.reserveTable(tableNum, savedOrder.getId());
-        } catch (Exception e) {
-            // If table reservation fails, delete the order and rethrow
-            orderRepository.delete(savedOrder);
-            throw new TableNotAvailableException("Failed to reserve table " + tableNumber + ": " + e.getMessage());
-        }
+        // Publish order created event - table service will listen and update table status automatically
+        OrderDetailsEvent event = mapToOrderDetailsEvent(savedOrder, OrderDetailsEvent.EventType.CREATED);
+        System.out.println("🔥 DEBUG: Publishing event - Type: " + event.getEventType() + ", OrderID: " + event.getOrderId() + ", Table: " + event.getTableNumber());
+        orderEventPublisher.publishOrderEvent(event);
+        System.out.println("🔥 DEBUG: Event published successfully");
         
-        orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(savedOrder, OrderDetailsEvent.EventType.CREATED));
         return savedOrder;
     }
 
@@ -156,6 +156,26 @@ public class OrderServiceImpl implements OrderService {
         order.confirmOrder();
         Order updatedOrder = orderRepository.save(order);
         orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.UPDATED));
+        return updatedOrder;
+    }
+
+    @Override
+    @Transactional
+    public Order completeOrder(UUID orderId) {
+        Order order = findOrderByIdOrThrow(orderId);
+        order.completeOrder();
+        Order updatedOrder = orderRepository.save(order);
+        
+        // Release the table when order is completed
+        try {
+            int tableNum = Integer.parseInt(updatedOrder.getTableNumber());
+            tableServiceClient.releaseTable(tableNum, updatedOrder.getId());
+        } catch (NumberFormatException e) {
+            // Log error but don't fail the order completion
+            System.err.println("Invalid table number format when releasing table: " + updatedOrder.getTableNumber());
+        }
+        
+        orderEventPublisher.publishOrderEvent(mapToOrderDetailsEvent(updatedOrder, OrderDetailsEvent.EventType.COMPLETED));
         return updatedOrder;
     }
 
