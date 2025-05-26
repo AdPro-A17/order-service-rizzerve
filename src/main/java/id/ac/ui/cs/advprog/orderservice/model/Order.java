@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -99,7 +100,7 @@ public class Order {
     public void calculateTotalPrice() {
         // For safety, ensure no null items are considered
         this.totalPrice = items.stream()
-                .filter(item -> item != null)
+                .filter(Objects::nonNull)
                 .mapToDouble(OrderItem::getSubtotal)
                 .sum();
     }

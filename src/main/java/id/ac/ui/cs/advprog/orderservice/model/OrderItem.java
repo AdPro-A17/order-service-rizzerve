@@ -66,14 +66,75 @@ public class OrderItem {
         this.setQuantity(quantity); // Use setter to calculate initial subtotal
     }
 
-    // Enhanced constructor with additional properties
-    public OrderItem(Order order, UUID menuItemId, String menuItemName, int quantity, double price, 
-                     String description, Boolean isCold, Boolean isSpicy, String menuType) {
-        this(order, menuItemId, menuItemName, quantity, price);
-        this.description = description;
-        this.isCold = isCold;
-        this.isSpicy = isSpicy;
-        this.menuType = menuType;
+    // Builder pattern for enhanced constructor with additional properties
+    public static OrderItemBuilder builder() {
+        return new OrderItemBuilder();
+    }
+    
+    public static class OrderItemBuilder {
+        private Order order;
+        private UUID menuItemId;
+        private String menuItemName;
+        private int quantity;
+        private double price;
+        private String description;
+        private Boolean isCold;
+        private Boolean isSpicy;
+        private String menuType;
+        
+        public OrderItemBuilder order(Order order) {
+            this.order = order;
+            return this;
+        }
+        
+        public OrderItemBuilder menuItemId(UUID menuItemId) {
+            this.menuItemId = menuItemId;
+            return this;
+        }
+        
+        public OrderItemBuilder menuItemName(String menuItemName) {
+            this.menuItemName = menuItemName;
+            return this;
+        }
+        
+        public OrderItemBuilder quantity(int quantity) {
+            this.quantity = quantity;
+            return this;
+        }
+        
+        public OrderItemBuilder price(double price) {
+            this.price = price;
+            return this;
+        }
+        
+        public OrderItemBuilder description(String description) {
+            this.description = description;
+            return this;
+        }
+        
+        public OrderItemBuilder isCold(Boolean isCold) {
+            this.isCold = isCold;
+            return this;
+        }
+        
+        public OrderItemBuilder isSpicy(Boolean isSpicy) {
+            this.isSpicy = isSpicy;
+            return this;
+        }
+        
+        public OrderItemBuilder menuType(String menuType) {
+            this.menuType = menuType;
+            return this;
+        }
+        
+        public OrderItem build() {
+            OrderItem item = new OrderItem(order, menuItemId, menuItemName, quantity, price);
+            item.description = this.description;
+            item.isCold = this.isCold;
+            item.isSpicy = this.isSpicy;
+            item.menuType = this.menuType;
+            return item;
+        }
     }
 
     // Override setter for quantity to automatically update subtotal
