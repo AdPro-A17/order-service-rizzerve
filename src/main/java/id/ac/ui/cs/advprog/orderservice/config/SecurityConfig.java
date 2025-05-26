@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,12 +22,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import id.ac.ui.cs.advprog.orderservice.security.JwtAuthFilter;
 
 import java.util.Arrays;
-import java.util.List;
+
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    @Value("${app.admin.password:defaultAdminPassword}")
+    private String adminPassword;
+
+    @Value("${FRONTEND_URL:http://localhost:3000}")
+    private String frontendUrl;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
@@ -63,7 +70,7 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         var admin = User.withUsername("admin")
-                .password(passwordEncoder().encode("password"))
+                .password(passwordEncoder().encode(adminPassword))
                 .roles("ADMIN")
                 .build();
 
@@ -78,10 +85,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedOrigins(Arrays.asList(frontendUrl));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

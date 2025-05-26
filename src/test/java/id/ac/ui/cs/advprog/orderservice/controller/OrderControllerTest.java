@@ -196,4 +196,48 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(orderId.toString())));
     }
+
+    @Test
+    void testConfirmOrder_OrderNotFound() throws Exception {
+        when(orderService.confirmOrder(orderId)).thenThrow(new OrderNotFoundException(orderId));
+
+        mockMvc.perform(post("/api/orders/{orderId}/confirm", orderId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testConfirmOrder_IllegalState() throws Exception {
+        when(orderService.confirmOrder(orderId)).thenThrow(new IllegalStateException("Cannot confirm order"));
+
+        mockMvc.perform(post("/api/orders/{orderId}/confirm", orderId))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testGetOrderById_NotFound() throws Exception {
+        when(orderService.findOrderById(orderId)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/orders/{orderId}", orderId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void testCreateOrder_TableNotAvailable() throws Exception {
+        when(orderService.createOrder(anyString())).thenThrow(new id.ac.ui.cs.advprog.orderservice.exception.TableNotAvailableException("Table not available"));
+
+        mockMvc.perform(post("/api/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validCreateRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testCreateOrder_IllegalArgument() throws Exception {
+        when(orderService.createOrder(anyString())).thenThrow(new IllegalArgumentException("Invalid table number"));
+
+        mockMvc.perform(post("/api/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validCreateRequest)))
+                .andExpect(status().isBadRequest());
+    }
 } 

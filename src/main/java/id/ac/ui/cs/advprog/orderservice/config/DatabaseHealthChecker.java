@@ -2,7 +2,6 @@ package id.ac.ui.cs.advprog.orderservice.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,11 +12,13 @@ public class DatabaseHealthChecker implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(DatabaseHealthChecker.class);
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate; // Requires a DataSource bean to be configured
+    private final JdbcTemplate jdbcTemplate; // Requires a DataSource bean to be configured
+    private final Environment environment;
 
-    @Autowired
-    private Environment environment;
+    public DatabaseHealthChecker(JdbcTemplate jdbcTemplate, Environment environment) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.environment = environment;
+    }
 
     @Override
     public void run(String... args) throws Exception {
@@ -37,9 +38,7 @@ public class DatabaseHealthChecker implements CommandLineRunner {
             logger.info("Successfully connected to database: {}", dbName);
             logger.info("Database version: {}", dbVersion);
             
-            // TODO: Add a check for essential tables if needed, e.g., orders, order_items
-            // Example: jdbcTemplate.execute("SELECT COUNT(*) FROM orders");
-            // logger.info("Table 'orders' is accessible.");
+        
 
         } catch (Exception e) {
             logger.error("Error connecting to database or performing health check: {}", e.getMessage());

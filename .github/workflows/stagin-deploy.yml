@@ -1,0 +1,67 @@
+name: Deploy to Staging
+
+on:
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          PGHOST: ${{ secrets.DB_HOST }}
+          PGDATABASE: ${{ secrets.DB_NAME }}
+          PGUSER: ${{ secrets.DB_USER }}
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          DUCKDNS_DOMAIN: ${{ secrets.DUCKDNS_DOMAIN }}
+          DUCKDNS_TOKEN: ${{ secrets.DUCKDNS_TOKEN }}
+          RABBITMQ_HOST: ${{ secrets.RABBITMQ_HOST }}
+          RABBITMQ_PORT: ${{ secrets.RABBITMQ_PORT }}
+          RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          RABBITMQ_VHOST: ${{ secrets.RABBITMQ_VHOST }}
+          RABBITMQ_SSL_ENABLED: ${{ secrets.RABBITMQ_SSL_ENABLED }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          
+        run: |
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << EOF
+            # Step 1: Refresh DuckDNS IP
+            curl -k "https://www.duckdns.org/update?domains=${DUCKDNS_DOMAIN}&token=${DUCKDNS_TOKEN}&ip="
+
+            # Step 2: Deploy latest staging code
+            cd ~/order-service-rizzerve
+            git pull origin staging
+            ./gradlew bootJar
+            docker stop order-service || true
+            docker rm order-service || true
+            docker build -t order-service-rizzerve:latest .
+            docker run -d --name order-service \
+              -p 8082:8082 \
+              -e PGHOST='${PGHOST}' \
+              -e PGDATABASE='${PGDATABASE}' \
+              -e PGUSER='${PGUSER}' \
+              -e PGPASSWORD='${PGPASSWORD}' \
+              -e RABBITMQ_HOST='${RABBITMQ_HOST}' \
+              -e RABBITMQ_PORT='${RABBITMQ_PORT}' \
+              -e RABBITMQ_USERNAME='${RABBITMQ_USERNAME}' \
+              -e RABBITMQ_PASSWORD='${RABBITMQ_PASSWORD}' \
+              -e RABBITMQ_VHOST='${RABBITMQ_VHOST}' \
+              -e RABBITMQ_SSL_ENABLED='${RABBITMQ_SSL_ENABLED}' \
+              -e SERVER_PORT='${SERVER_PORT}' \
+              -e JWT_SECRET='${JWT_SECRET}' \
+              -e FRONTEND_URL='${FRONTEND_URL}' \
+              order-service-rizzerve:latest
+          EOF

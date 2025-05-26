@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -99,7 +100,7 @@ public class Order {
     public void calculateTotalPrice() {
         // For safety, ensure no null items are considered
         this.totalPrice = items.stream()
-                .filter(item -> item != null)
+                .filter(Objects::nonNull)
                 .mapToDouble(OrderItem::getSubtotal)
                 .sum();
     }
@@ -132,15 +133,7 @@ public class Order {
     }
 
 
-    // Lombok will generate standard getters/setters for id, tableNumber, items, totalPrice, statusString
-    // We have custom ones for 'state' management.
-
-    // You might need @PostLoad annotated method if state hydration needs to happen right after entity load
-    // @PostLoad
-    // void initializeState() {
-    //     getState(); // Ensure currentState is initialized
-    // }
-
+    
     // Equals and HashCode based on ID
     @Override
     public boolean equals(Object o) {

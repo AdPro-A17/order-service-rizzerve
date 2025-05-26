@@ -76,9 +76,7 @@ class OrderRepositoryTest {
         assertEquals("Item A", found.getItems().get(0).getMenuItemName());
         assertEquals(10.0, found.getTotalPrice());
         assertEquals("NEW", found.getStatusString()); // Check persisted status string
-        // Note: Transient state `currentState` is not persisted and will be null here
-        // unless explicitly hydrated (which OrderRepository doesn't do).
-        // State testing should happen at the Service layer or Model layer.
+        
     }
 
     @Test
@@ -161,13 +159,5 @@ class OrderRepositoryTest {
         assertNull(entityManager.find(OrderItem.class, persistedItem1Id)); // Item should be gone
     }
 
-    // Example: findByTableNumber test (if method was added to repository)
-    // @Test
-    // void whenFindByTableNumber_thenReturnCorrectOrders() {
-    //     // Define the method in OrderRepository first:
-    //     // List<Order> findByTableNumber(String tableNumber);
-    //     List<Order> found = orderRepository.findByTableNumber("T1");
-    //     assertEquals(1, found.size());
-    //     assertEquals(order1Id, found.get(0).getId());
-    // }
+    
 } 

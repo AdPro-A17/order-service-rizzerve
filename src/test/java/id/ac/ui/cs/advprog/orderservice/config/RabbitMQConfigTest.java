@@ -1,91 +1,169 @@
 package id.ac.ui.cs.advprog.orderservice.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.TopicExchange;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(MockitoExtension.class)
 class RabbitMQConfigTest {
-    private RabbitMQConfig rabbitMQConfig;
 
-    private final String tableEventsExchangeNameValue = "table.events.exchange.test";
-    private final String orderServiceQueueNameValue = "order-service.queue.test";
-    private final String rkTableDeletedValue = "table.deleted.test";
-    private final String rkTableUpdatedNomorValue = "table.updated.nomor.test";
-    private final String orderEventsExchangePublisherNameValue = "order.events.exchange.publisher.test";
+    private RabbitMQConfig rabbitMQConfig;
 
     @BeforeEach
     void setUp() {
         rabbitMQConfig = new RabbitMQConfig();
-        ReflectionTestUtils.setField(rabbitMQConfig, "tableEventsExchangeName", tableEventsExchangeNameValue);
-        ReflectionTestUtils.setField(rabbitMQConfig, "orderServiceTableEventsQueueName", orderServiceQueueNameValue);
-        ReflectionTestUtils.setField(rabbitMQConfig, "routingKeyTableDeleted", rkTableDeletedValue);
-        ReflectionTestUtils.setField(rabbitMQConfig, "routingKeyTableUpdatedNomor", rkTableUpdatedNomorValue);
-        ReflectionTestUtils.setField(rabbitMQConfig, "orderEventsExchangeNamePublisher", orderEventsExchangePublisherNameValue);
+        
+        // Set the @Value fields using ReflectionTestUtils
+        ReflectionTestUtils.setField(rabbitMQConfig, "tableEventsExchangeName", "table.events.exchange");
+        ReflectionTestUtils.setField(rabbitMQConfig, "orderServiceTableEventsQueueName", "order-service.table-events.queue");
+        ReflectionTestUtils.setField(rabbitMQConfig, "routingKeyTableDeleted", "table.event.deleted");
+        ReflectionTestUtils.setField(rabbitMQConfig, "routingKeyTableUpdatedNomor", "table.event.updated.nomor");
+        ReflectionTestUtils.setField(rabbitMQConfig, "orderEventsExchangeNamePublisher", "order.events.exchange");
     }
 
     @Test
-    void testJsonMessageConverterBean() {
+    void testJsonMessageConverter() {
+        // Arrange
         ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        MessageConverter messageConverter = rabbitMQConfig.jsonMessageConverter(objectMapper);
-        assertNotNull(messageConverter);
-        assertTrue(messageConverter instanceof Jackson2JsonMessageConverter);
+
+        // Act
+        MessageConverter converter = rabbitMQConfig.jsonMessageConverter(objectMapper);
+
+        // Assert
+        assertNotNull(converter);
+        assertInstanceOf(Jackson2JsonMessageConverter.class, converter);
     }
 
     @Test
-    void testTableEventsExchangeBean() {
+    void testTableEventsExchange() {
+        // Act
         TopicExchange exchange = rabbitMQConfig.tableEventsExchange();
+
+        // Assert
         assertNotNull(exchange);
-        assertEquals(tableEventsExchangeNameValue, exchange.getName());
+        assertEquals("table.events.exchange", exchange.getName());
         assertTrue(exchange.isDurable());
         assertFalse(exchange.isAutoDelete());
     }
 
     @Test
-    void testOrderServiceTableEventsQueueBean() {
+    void testOrderServiceTableEventsQueue() {
+        // Act
         Queue queue = rabbitMQConfig.orderServiceTableEventsQueue();
+
+        // Assert
         assertNotNull(queue);
-        assertEquals(orderServiceQueueNameValue, queue.getName());
+        assertEquals("order-service.table-events.queue", queue.getName());
         assertTrue(queue.isDurable());
     }
 
     @Test
     void testTableDeletedBinding() {
-        Queue queue = new Queue(orderServiceQueueNameValue);
-        TopicExchange exchange = new TopicExchange(tableEventsExchangeNameValue);
+        // Arrange
+        Queue queue = rabbitMQConfig.orderServiceTableEventsQueue();
+        TopicExchange exchange = rabbitMQConfig.tableEventsExchange();
+
+        // Act
         Binding binding = rabbitMQConfig.tableDeletedBinding(queue, exchange);
+
+        // Assert
         assertNotNull(binding);
-        assertEquals(orderServiceQueueNameValue, binding.getDestination());
-        assertEquals(tableEventsExchangeNameValue, binding.getExchange());
-        assertEquals(rkTableDeletedValue, binding.getRoutingKey());
+        assertEquals("table.event.deleted", binding.getRoutingKey());
+        assertEquals(queue.getName(), binding.getDestination());
+        assertEquals(exchange.getName(), binding.getExchange());
+        assertEquals(Binding.DestinationType.QUEUE, binding.getDestinationType());
     }
 
     @Test
     void testTableUpdatedNomorBinding() {
-        Queue queue = new Queue(orderServiceQueueNameValue);
-        TopicExchange exchange = new TopicExchange(tableEventsExchangeNameValue);
+        // Arrange
+        Queue queue = rabbitMQConfig.orderServiceTableEventsQueue();
+        TopicExchange exchange = rabbitMQConfig.tableEventsExchange();
+
+        // Act
         Binding binding = rabbitMQConfig.tableUpdatedNomorBinding(queue, exchange);
+
+        // Assert
         assertNotNull(binding);
-        assertEquals(orderServiceQueueNameValue, binding.getDestination());
-        assertEquals(tableEventsExchangeNameValue, binding.getExchange());
-        assertEquals(rkTableUpdatedNomorValue, binding.getRoutingKey());
+        assertEquals("table.event.updated.nomor", binding.getRoutingKey());
+        assertEquals(queue.getName(), binding.getDestination());
+        assertEquals(exchange.getName(), binding.getExchange());
+        assertEquals(Binding.DestinationType.QUEUE, binding.getDestinationType());
     }
 
     @Test
-    void testOrderEventsExchangePublisherBean() {
+    void testOrderEventsExchangePublisher() {
+        // Act
         TopicExchange exchange = rabbitMQConfig.orderEventsExchangePublisher();
+
+        // Assert
         assertNotNull(exchange);
-        assertEquals(orderEventsExchangePublisherNameValue, exchange.getName());
+        assertEquals("order.events.exchange", exchange.getName());
         assertTrue(exchange.isDurable());
         assertFalse(exchange.isAutoDelete());
+    }
+
+    @Test
+    void testAllBeansAreCreated() {
+        // Test that all beans can be created without exceptions
+        assertDoesNotThrow(() -> {
+            rabbitMQConfig.tableEventsExchange();
+            rabbitMQConfig.orderServiceTableEventsQueue();
+            rabbitMQConfig.orderEventsExchangePublisher();
+        });
+    }
+
+    @Test
+    void testBindingsWithDifferentExchanges() {
+        // Arrange
+        Queue queue = rabbitMQConfig.orderServiceTableEventsQueue();
+        TopicExchange exchange1 = rabbitMQConfig.tableEventsExchange();
+
+        // Act
+        Binding binding1 = rabbitMQConfig.tableDeletedBinding(queue, exchange1);
+        Binding binding2 = rabbitMQConfig.tableUpdatedNomorBinding(queue, exchange1);
+
+        // Assert
+        assertNotNull(binding1);
+        assertNotNull(binding2);
+        assertNotEquals(binding1.getRoutingKey(), binding2.getRoutingKey());
+        assertEquals(binding1.getExchange(), binding2.getExchange());
+        assertEquals(binding1.getDestination(), binding2.getDestination());
+    }
+
+    @Test
+    void testExchangeProperties() {
+        // Act
+        TopicExchange tableExchange = rabbitMQConfig.tableEventsExchange();
+        TopicExchange orderExchange = rabbitMQConfig.orderEventsExchangePublisher();
+
+        // Assert
+        // Both exchanges should be durable and not auto-delete
+        assertTrue(tableExchange.isDurable());
+        assertFalse(tableExchange.isAutoDelete());
+        assertTrue(orderExchange.isDurable());
+        assertFalse(orderExchange.isAutoDelete());
+        
+        // They should have different names
+        assertNotEquals(tableExchange.getName(), orderExchange.getName());
+    }
+
+    @Test
+    void testQueueProperties() {
+        // Act
+        Queue queue = rabbitMQConfig.orderServiceTableEventsQueue();
+
+        // Assert
+        assertTrue(queue.isDurable());
+        assertFalse(queue.isExclusive());
+        assertFalse(queue.isAutoDelete());
     }
 }

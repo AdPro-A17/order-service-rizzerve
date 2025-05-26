@@ -5,18 +5,10 @@ package id.ac.ui.cs.advprog.orderservice.model.state;
  */
 public interface OrderState {
 
-    /**
-     * Action to confirm the order.
-     * May transition the order to the next state (e.g., PROCESSING).
-     * Throws IllegalStateException if the action is not allowed in the current state.
-     */
+    
     void confirmOrder();
 
-    /**
-     * Action to mark the order as completed.
-     * May transition the order to the COMPLETED state.
-     * Throws IllegalStateException if the action is not allowed in the current state.
-     */
+    
     void completeOrder();
 
     /**

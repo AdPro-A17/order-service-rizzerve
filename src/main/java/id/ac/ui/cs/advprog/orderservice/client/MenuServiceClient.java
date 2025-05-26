@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.client;
 
+import id.ac.ui.cs.advprog.orderservice.exception.MenuServiceException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -31,7 +32,7 @@ public class MenuServiceClient {
             return null;
         } catch (Exception e) {
             log.error("Error calling menu service for item {}: {}", menuItemId, e.getMessage());
-            throw new RuntimeException("Menu service unavailable", e);
+            throw new MenuServiceException("Menu service unavailable", e);
         }
     }
     

@@ -16,24 +16,41 @@ import java.util.UUID;
 @Slf4j
 public class TableServiceClient {
 
+    private static final String TABLE_NUMBER_PARAM = "tableNumber";
+    private static final String STATUS_PARAM = "status";
+    private static final String ACTIVE_ORDER_ID_PARAM = "activeOrderId";
+    private static final String ACTIVE_ORDER_STATUS_PARAM = "activeOrderStatus";
+    private static final String STATUS_TERPAKAI = "TERPAKAI";
+    private static final String STATUS_TERSEDIA = "TERSEDIA";
+    private static final String STATUS_PENDING = "PENDING";
+
     private final RestTemplate restTemplate;
 
     @Value("${table.service.url}")
     private String tableServiceUrl;
+    
+    @Value("${table.service.update-status-path:/api/table/update-status}")
+    private String updateStatusPath;
+    
+    @Value("${table.service.check-availability-path:/api/table/check-availability}")
+    private String checkAvailabilityPath;
+    
+    @Value("${table.service.table-by-number-path:/api/table/nomor/}")
+    private String tableByNumberPath;
 
     /**
      * Check if a table is available for seating
      */
     public boolean isTableAvailable(int tableNumber) {
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(tableServiceUrl)
-                    .path("/api/table/check-availability")
-                    .queryParam("tableNumber", tableNumber)
+            String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
+                    .path(checkAvailabilityPath)
+                    .queryParam(TABLE_NUMBER_PARAM, tableNumber)
                     .toUriString();
 
             TableAvailabilityResponse response = restTemplate.getForObject(url, TableAvailabilityResponse.class);
             
-            log.info("Table {} availability check: {}", tableNumber, response != null ? response.isAvailable() : false);
+            log.info("Table {} availability check: {}", tableNumber, response != null && response.isAvailable());
             return response != null && response.isAvailable();
         } catch (Exception e) {
             log.error("Error checking table availability for table {}: {}", tableNumber, e.getMessage());
@@ -50,12 +67,12 @@ public class TableServiceClient {
                 throw new TableNotAvailableException("Table " + tableNumber + " is not available");
             }
 
-            String url = UriComponentsBuilder.fromHttpUrl(tableServiceUrl)
-                    .path("/api/table/update-status")
-                    .queryParam("tableNumber", tableNumber)
-                    .queryParam("status", "TERPAKAI")
-                    .queryParam("activeOrderId", orderId.toString())
-                    .queryParam("activeOrderStatus", "PENDING")
+            String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
+                    .path(updateStatusPath)
+                    .queryParam(TABLE_NUMBER_PARAM, tableNumber)
+                    .queryParam(STATUS_PARAM, STATUS_TERPAKAI)
+                    .queryParam(ACTIVE_ORDER_ID_PARAM, orderId.toString())
+                    .queryParam(ACTIVE_ORDER_STATUS_PARAM, STATUS_PENDING)
                     .toUriString();
 
             restTemplate.put(url, null);
@@ -71,12 +88,12 @@ public class TableServiceClient {
      */
     public void releaseTable(int tableNumber, UUID orderId) {
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(tableServiceUrl)
-                    .path("/api/table/update-status")
-                    .queryParam("tableNumber", tableNumber)
-                    .queryParam("status", "TERSEDIA")
-                    .queryParam("activeOrderId", "")
-                    .queryParam("activeOrderStatus", "")
+            String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
+                    .path(updateStatusPath)
+                    .queryParam(TABLE_NUMBER_PARAM, tableNumber)
+                    .queryParam(STATUS_PARAM, STATUS_TERSEDIA)
+                    .queryParam(ACTIVE_ORDER_ID_PARAM, "")
+                    .queryParam(ACTIVE_ORDER_STATUS_PARAM, "")
                     .toUriString();
 
             restTemplate.put(url, null);
@@ -92,8 +109,8 @@ public class TableServiceClient {
      */
     public TableResponse getTableByNumber(int tableNumber) {
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(tableServiceUrl)
-                    .path("/api/table/nomor/" + tableNumber)
+            String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
+                    .path(tableByNumberPath + tableNumber)
                     .toUriString();
 
             GetTableResponse response = restTemplate.getForObject(url, GetTableResponse.class);
@@ -106,12 +123,12 @@ public class TableServiceClient {
 
     public void updateTableStatus(int tableNumber, UUID orderId, String orderStatus) {
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(tableServiceUrl)
-                    .path("/api/table/update-status")
-                    .queryParam("tableNumber", tableNumber)
-                    .queryParam("status", "TERPAKAI")
-                    .queryParam("activeOrderId", orderId.toString())
-                    .queryParam("activeOrderStatus", orderStatus)
+            String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
+                    .path(updateStatusPath)
+                    .queryParam(TABLE_NUMBER_PARAM, tableNumber)
+                    .queryParam(STATUS_PARAM, STATUS_TERPAKAI)
+                    .queryParam(ACTIVE_ORDER_ID_PARAM, orderId.toString())
+                    .queryParam(ACTIVE_ORDER_STATUS_PARAM, orderStatus)
                     .toUriString();
 
             restTemplate.put(url, null);

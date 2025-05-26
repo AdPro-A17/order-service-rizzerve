@@ -21,7 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api/orders")
@@ -37,9 +37,7 @@ public class OrderController {
         try {
             Order order = orderService.createOrder(request.getTableNumber());
             return ResponseEntity.status(HttpStatus.CREATED).body(mapToOrderResponse(order));
-        } catch (TableNotAvailableException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        } catch (IllegalArgumentException e) {
+        } catch (TableNotAvailableException | IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
@@ -58,7 +56,7 @@ public class OrderController {
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
         List<OrderResponse> orders = orderService.findAllOrders().stream()
                 .map(this::mapToOrderResponse)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(orders);
     }
 
@@ -73,12 +71,12 @@ public class OrderController {
             if (menuItem == null) {
                 throw new MenuItemNotFoundException(request.getMenuItemId());
             }
-            
+
             // Check if item is available
             if (menuItem.getAvailable() == null || !menuItem.getAvailable()) {
                 throw new MenuItemNotFoundException(request.getMenuItemId(), "Item is not available");
             }
-            
+
             Order updatedOrder = orderService.addItemToOrder(
                     orderId,
                     request.getMenuItemId(),
@@ -153,6 +151,20 @@ public class OrderController {
         }
     }
 
+    // Admin can complete order (mark as done) - Using PUT method as it's more RESTful for state updates
+    @PutMapping("/{orderId}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {
+        try {
+            Order completedOrder = orderService.completeOrder(orderId);
+            return ResponseEntity.ok(mapToOrderResponse(completedOrder));
+        } catch (OrderNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     private OrderResponse mapToOrderResponse(Order order) {
         return OrderResponse.builder()
                 .id(order.getId())
@@ -168,20 +180,7 @@ public class OrderController {
                                 .quantity(item.getQuantity())
                                 .subtotal(item.getSubtotal())
                                 .build())
-                        .collect(Collectors.toList()))
+                        .toList())
                 .build();
     }
-
-    @PutMapping("/{orderId}/complete")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<OrderResponse> completeOrder(@PathVariable UUID orderId) {
-        try {
-            Order completedOrder = orderService.completeOrder(orderId);
-            return ResponseEntity.ok(mapToOrderResponse(completedOrder));
-        } catch (OrderNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-} 
+}

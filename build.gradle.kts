@@ -32,45 +32,63 @@ val seleniumJavaVersion = "4.14.1"
 val seleniumJupiterVersion = "5.0.1"
 val webdrivermanagerVersion = "5.6.3"
 val junitJupiterVersion = "5.9.1"
+val jjwtVersion = "0.11.5"
+val dotenvJavaVersion = "2.3.2"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    // Spring Boot starters
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    // Monitoring
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
-    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
-    implementation("io.jsonwebtoken:jjwt-impl:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+    // JWT
+    implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")
+    implementation("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
+
+    // Jackson and Kotlin
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("io.github.cdimascio:dotenv-java:2.3.2")
+
+    // Environment
+    implementation("io.github.cdimascio:dotenv-java:$dotenvJavaVersion")
+
+    // Development
     developmentOnly("org.springframework.boot:spring-boot-devtools")
+
+    // Database
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("com.h2database:h2")
+
+    // Lombok
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     annotationProcessor("org.projectlombok:lombok")
-    testCompileOnly("org.projectlombok:lombok")
-    testAnnotationProcessor("org.projectlombok:lombok")
+
+    // Test dependencies
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.seleniumhq.selenium:selenium-java:$seleniumJavaVersion")
-    testImplementation("io.github.bonigarcia:webdrivermanager:$webdrivermanagerVersion")
+    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.mockito:mockito-core")
     testImplementation("org.mockito:mockito-junit-jupiter")
-    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.seleniumhq.selenium:selenium-java:$seleniumJavaVersion")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.register<Test>("unitTest") {

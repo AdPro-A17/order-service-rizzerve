@@ -1,13 +1,13 @@
 package id.ac.ui.cs.advprog.orderservice.model.state;
 
 import id.ac.ui.cs.advprog.orderservice.model.Order;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class CompletedOrderState implements OrderState {
 
-    private final Order order;
-
     public CompletedOrderState(Order order) {
-        this.order = order;
+        // Constructor parameter kept for consistency with interface
     }
 
     @Override
@@ -18,7 +18,7 @@ public class CompletedOrderState implements OrderState {
     @Override
     public void completeOrder() {
         // Already completed, do nothing or log warning
-        System.out.println("Order is already completed.");
+        log.warn("Order is already completed.");
     }
 
     @Override

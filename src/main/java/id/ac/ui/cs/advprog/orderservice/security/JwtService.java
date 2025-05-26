@@ -6,16 +6,17 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.security.core.userdetails.UserDetails;
+
 
 import java.security.Key;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
-    // TODO: Ensure 'jwt.secret' is configured properly in application.properties for production.
+    
     // For tests, a dummy secret is provided in src/test/resources/application.properties.
     // It's crucial that the production secret is strong and kept confidential.
     @Value("${jwt.secret}")
@@ -68,18 +69,17 @@ public class JwtService {
                     .parseClaimsJws(token)
                     .getBody();
         } catch (Exception e) {
-            return null;
+            return Jwts.claims(Collections.emptyMap());
         }
     }
 
     private Key getSigningKey() {
-        // TODO: Ensure the secret key is sufficiently long and complex for SHA256.
         // Consider externalizing secret management (e.g., using environment variables or a secrets manager) for production.
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public boolean validateToken(String token, UserDetails userDetails) {
+    public boolean validateToken() {
         // Not implemented yet - for RED phase testing
         return false;
     }

@@ -15,18 +15,18 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class JwtServiceTest {
+class JwtServiceTest {
 
     private JwtService jwtService;
-    private final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    private final String secretKey = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
     private Key signingKey;
 
     @BeforeEach
     void setUp() {
         jwtService = new JwtService();
-        ReflectionTestUtils.setField(jwtService, "secretKey", SECRET_KEY);
+        ReflectionTestUtils.setField(jwtService, "secretKey", secretKey);
         
-        byte[] keyBytes = java.util.Base64.getDecoder().decode(SECRET_KEY);
+        byte[] keyBytes = java.util.Base64.getDecoder().decode(secretKey);
         signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 

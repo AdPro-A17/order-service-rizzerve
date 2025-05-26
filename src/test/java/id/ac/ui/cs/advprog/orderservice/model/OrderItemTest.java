@@ -3,8 +3,6 @@ package id.ac.ui.cs.advprog.orderservice.model;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -123,7 +121,7 @@ class OrderItemTest {
 
         assertEquals(item1, item2);
         assertNotEquals(item1, item3);
-        assertNotEquals(item1, null);
+        assertNotEquals(null, item1);
         assertNotEquals(item1, new Object());
         assertEquals(item1.hashCode(), item2.hashCode()); // Hashcode relies on ID if not null
         // assertNotEquals(item1.hashCode(), item3.hashCode()); // Can clash
