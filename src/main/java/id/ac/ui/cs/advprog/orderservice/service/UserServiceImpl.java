@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.service;
 
+import id.ac.ui.cs.advprog.orderservice.exception.InvalidAuthenticationTokenException;
 import id.ac.ui.cs.advprog.orderservice.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -24,6 +25,6 @@ public class UserServiceImpl implements UserService {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
-        throw new RuntimeException("Invalid authentication token");
+        throw new InvalidAuthenticationTokenException("Invalid authentication token");
     }
 }

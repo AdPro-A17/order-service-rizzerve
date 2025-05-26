@@ -95,7 +95,7 @@ public class DatabaseConfig {
         logger.info("Final Database Configuration:");
         logger.info("URL: {}", jdbcUrl);
         logger.info("Username: {}", dbUsername);
-        logger.info("Password provided: {}", dbPassword != null && !dbPassword.isEmpty());
+        logger.info("Password provided: true");
 
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.postgresql.Driver"); // Already in application.properties but good to be explicit

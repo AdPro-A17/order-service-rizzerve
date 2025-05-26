@@ -76,9 +76,7 @@ class OrderRepositoryTest {
         assertEquals("Item A", found.getItems().get(0).getMenuItemName());
         assertEquals(10.0, found.getTotalPrice());
         assertEquals("NEW", found.getStatusString()); // Check persisted status string
-        // Note: Transient state `currentState` is not persisted and will be null here
-        // unless explicitly hydrated (which OrderRepository doesn't do).
-        // State testing should happen at the Service layer or Model layer.
+        
     }
 
     @Test
