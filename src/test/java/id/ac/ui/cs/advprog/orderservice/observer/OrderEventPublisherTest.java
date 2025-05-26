@@ -15,7 +15,6 @@ import java.util.Collections;
 import java.util.UUID;
 
 import static org.mockito.Mockito.verify;
-import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class OrderEventPublisherTest {

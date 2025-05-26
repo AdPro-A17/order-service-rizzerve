@@ -10,18 +10,19 @@ import id.ac.ui.cs.advprog.orderservice.pricing.PricingContext;
 import id.ac.ui.cs.advprog.orderservice.pricing.RegularPricing;
 import id.ac.ui.cs.advprog.orderservice.repository.CheckoutRepository;
 import id.ac.ui.cs.advprog.orderservice.repository.OrderRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
-import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class CheckoutService {
 
     private final CheckoutRepository checkoutRepository;
@@ -30,7 +31,6 @@ public class CheckoutService {
     private final RegularPricing regularPricing;
     private final CouponPricing couponPricing;
     private final RestTemplate restTemplate;
-    private final TableServiceClient tableServiceClient;
 
     @Value("${order-service.url}")
     private String orderServiceBaseUrl;
@@ -42,8 +42,7 @@ public class CheckoutService {
             PricingContext pricingContext,
             RegularPricing regularPricing,
             CouponPricing couponPricing,
-            RestTemplate restTemplate,
-            TableServiceClient tableServiceClient
+            RestTemplate restTemplate
     ) {
         this.checkoutRepository = checkoutRepository;
         this.orderRepository = orderRepository;
@@ -51,7 +50,6 @@ public class CheckoutService {
         this.regularPricing = regularPricing;
         this.couponPricing = couponPricing;
         this.restTemplate = restTemplate;
-        this.tableServiceClient = tableServiceClient;
     }
 
     @Transactional
@@ -96,9 +94,9 @@ public class CheckoutService {
         try {
             String confirmOrderUrl = orderServiceBaseUrl + "/api/orders/" + orderId + "/confirm";
             restTemplate.postForObject(confirmOrderUrl, null, Void.class);
-            System.out.println("Order " + orderId + " confirmed via API successfully.");
+            log.info("Order {} confirmed via API successfully.", orderId);
         } catch (Exception e) {
-            System.err.println("Error confirming order " + orderId + " via API: " + e.getMessage());
+            log.error("Error confirming order {} via API: {}", orderId, e.getMessage());
         }
     }
 }
