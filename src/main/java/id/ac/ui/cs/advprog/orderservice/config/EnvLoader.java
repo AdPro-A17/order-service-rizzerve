@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.orderservice.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -9,6 +11,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class EnvLoader implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+    private static final Logger logger = LoggerFactory.getLogger(EnvLoader.class);
 
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {
@@ -31,11 +35,11 @@ public class EnvLoader implements ApplicationContextInitializer<ConfigurableAppl
             if (!envMap.isEmpty()) {
                 ConfigurableEnvironment environment = applicationContext.getEnvironment();
                 environment.getPropertySources().addFirst(new MapPropertySource("envProperties", envMap));
-                System.out.println("Environment variables loaded successfully!");
+                logger.info("Environment variables loaded successfully!");
             }
             
         } catch (Exception e) {
-            System.err.println("Error loading environment variables: " + e.getMessage());
+            logger.error("Error loading environment variables: {}", e.getMessage());
         }
     }
 }

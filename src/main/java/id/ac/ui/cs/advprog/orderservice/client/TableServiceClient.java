@@ -20,9 +20,6 @@ public class TableServiceClient {
     private static final String STATUS_PARAM = "status";
     private static final String ACTIVE_ORDER_ID_PARAM = "activeOrderId";
     private static final String ACTIVE_ORDER_STATUS_PARAM = "activeOrderStatus";
-    private static final String UPDATE_STATUS_PATH = "/api/table/update-status";
-    private static final String CHECK_AVAILABILITY_PATH = "/api/table/check-availability";
-    private static final String TABLE_BY_NUMBER_PATH = "/api/table/nomor/";
     private static final String STATUS_TERPAKAI = "TERPAKAI";
     private static final String STATUS_TERSEDIA = "TERSEDIA";
     private static final String STATUS_PENDING = "PENDING";
@@ -31,6 +28,15 @@ public class TableServiceClient {
 
     @Value("${table.service.url}")
     private String tableServiceUrl;
+    
+    @Value("${table.service.update-status-path:/api/table/update-status}")
+    private String updateStatusPath;
+    
+    @Value("${table.service.check-availability-path:/api/table/check-availability}")
+    private String checkAvailabilityPath;
+    
+    @Value("${table.service.table-by-number-path:/api/table/nomor/}")
+    private String tableByNumberPath;
 
     /**
      * Check if a table is available for seating
@@ -38,7 +44,7 @@ public class TableServiceClient {
     public boolean isTableAvailable(int tableNumber) {
         try {
             String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
-                    .path(CHECK_AVAILABILITY_PATH)
+                    .path(checkAvailabilityPath)
                     .queryParam(TABLE_NUMBER_PARAM, tableNumber)
                     .toUriString();
 
@@ -62,7 +68,7 @@ public class TableServiceClient {
             }
 
             String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
-                    .path(UPDATE_STATUS_PATH)
+                    .path(updateStatusPath)
                     .queryParam(TABLE_NUMBER_PARAM, tableNumber)
                     .queryParam(STATUS_PARAM, STATUS_TERPAKAI)
                     .queryParam(ACTIVE_ORDER_ID_PARAM, orderId.toString())
@@ -83,7 +89,7 @@ public class TableServiceClient {
     public void releaseTable(int tableNumber, UUID orderId) {
         try {
             String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
-                    .path(UPDATE_STATUS_PATH)
+                    .path(updateStatusPath)
                     .queryParam(TABLE_NUMBER_PARAM, tableNumber)
                     .queryParam(STATUS_PARAM, STATUS_TERSEDIA)
                     .queryParam(ACTIVE_ORDER_ID_PARAM, "")
@@ -104,7 +110,7 @@ public class TableServiceClient {
     public TableResponse getTableByNumber(int tableNumber) {
         try {
             String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
-                    .path(TABLE_BY_NUMBER_PATH + tableNumber)
+                    .path(tableByNumberPath + tableNumber)
                     .toUriString();
 
             GetTableResponse response = restTemplate.getForObject(url, GetTableResponse.class);
@@ -118,7 +124,7 @@ public class TableServiceClient {
     public void updateTableStatus(int tableNumber, UUID orderId, String orderStatus) {
         try {
             String url = UriComponentsBuilder.fromUriString(tableServiceUrl)
-                    .path(UPDATE_STATUS_PATH)
+                    .path(updateStatusPath)
                     .queryParam(TABLE_NUMBER_PARAM, tableNumber)
                     .queryParam(STATUS_PARAM, STATUS_TERPAKAI)
                     .queryParam(ACTIVE_ORDER_ID_PARAM, orderId.toString())

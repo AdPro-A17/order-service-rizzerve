@@ -38,9 +38,7 @@ public class DatabaseHealthChecker implements CommandLineRunner {
             logger.info("Successfully connected to database: {}", dbName);
             logger.info("Database version: {}", dbVersion);
             
-            // TODO: Add a check for essential tables if needed, e.g., orders, order_items
-            // Example: jdbcTemplate.execute("SELECT COUNT(*) FROM orders");
-            // logger.info("Table 'orders' is accessible.");
+        
 
         } catch (Exception e) {
             logger.error("Error connecting to database or performing health check: {}", e.getMessage());
