@@ -1,11 +1,10 @@
 # Use OpenJDK 21 base image
-FROM eclipse-temurin:21-jdk # JDK, larger than JRE
+FROM eclipse-temurin:21-jdk
 
 # Set working directory
 WORKDIR /app
 
 # Copy build/libs jar file into the container
-# ASSUMES THE JAR IS ALREADY BUILT ON THE HOST MACHINE
 COPY build/libs/*.jar app.jar
 
 # Expose port (adjust if needed)
