@@ -32,6 +32,7 @@ jobs:
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
           RABBITMQ_VHOST: ${{ secrets.RABBITMQ_VHOST }}
           RABBITMQ_SSL_ENABLED: ${{ secrets.RABBITMQ_SSL_ENABLED }}
+          
         run: |
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << EOF
             # Step 1: Refresh DuckDNS IP
@@ -56,5 +57,8 @@ jobs:
               -e RABBITMQ_PASSWORD='${RABBITMQ_PASSWORD}' \
               -e RABBITMQ_VHOST='${RABBITMQ_VHOST}' \
               -e RABBITMQ_SSL_ENABLED='${RABBITMQ_SSL_ENABLED}' \
+              -e SERVER_PORT='${SERVER_PORT}' \
+              -e JWT_SECRET='${JWT_SECRET}' \
+              -e FRONTEND_URL='${FRONTEND_URL}' \
               order-service-rizzerve:latest
           EOF

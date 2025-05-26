@@ -47,4 +47,7 @@ jobs:
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
           RABBITMQ_VHOST: ${{ secrets.RABBITMQ_VHOST }}
           RABBITMQ_SSL_ENABLED: ${{ secrets.RABBITMQ_SSL_ENABLED }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
         run: ./gradlew build sonar --info

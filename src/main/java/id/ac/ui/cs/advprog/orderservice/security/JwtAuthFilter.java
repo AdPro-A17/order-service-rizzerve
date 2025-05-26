@@ -45,21 +45,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // If username exists and user is not already authenticated and token is valid
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null 
                 && jwtService.isTokenValid(jwt, username)) {
-            // Extract roles and create authorities
-            List<String> roles = jwtService.extractRoles(jwt);
-            List<SimpleGrantedAuthority> authorities = roles.stream()
-                    .map(SimpleGrantedAuthority::new)
+                // Extract roles and create authorities
+                List<String> roles = jwtService.extractRoles(jwt);
+                List<SimpleGrantedAuthority> authorities = roles.stream()
+                        .map(SimpleGrantedAuthority::new)
                     .toList();
 
-            // Create authentication token
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    username,
-                    null,
-                    authorities
-            );
-            
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                // Create authentication token
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        username,
+                        null,
+                        authorities
+                );
+                
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
         }
         
         filterChain.doFilter(request, response);
