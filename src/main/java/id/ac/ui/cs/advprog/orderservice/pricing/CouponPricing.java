@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.pricing;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -9,6 +10,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 
 @Component
+@Slf4j
 public class CouponPricing implements PricingStrategy {
     private final RestTemplate restTemplate;
 
@@ -39,10 +41,10 @@ public class CouponPricing implements PricingStrategy {
                     new RegularPricing().calculateTotal(checkout);
                 }
             } catch (HttpClientErrorException e) {
-                System.err.println("Error applying coupon " + checkout.getCouponCode() + ": " + e.getResponseBodyAsString());
+                log.error("Error applying coupon {}: {}", checkout.getCouponCode(), e.getResponseBodyAsString());
                 throw new CouponApplicationException("Failed to apply coupon: " + e.getResponseBodyAsString(), e);
             } catch (Exception e) {
-                System.err.println("Error applying coupon " + checkout.getCouponCode() + ": " + e.getMessage());
+                log.error("Error applying coupon {}: {}", checkout.getCouponCode(), e.getMessage());
                 throw new CouponApplicationException("Failed to apply coupon: " + e.getMessage(), e);
             }
         } else {

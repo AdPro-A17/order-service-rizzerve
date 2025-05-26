@@ -11,7 +11,6 @@ import org.springframework.http.HttpStatus;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/checkouts")
@@ -23,7 +22,7 @@ public class CheckoutController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createCheckout(@RequestBody CheckoutRequest request) {
+    public ResponseEntity<Object> createCheckout(@RequestBody CheckoutRequest request) {
         try {
             Checkout checkout = checkoutService.createCheckout(request);
             return ResponseEntity.ok(mapToCheckoutResponse(checkout));
@@ -44,7 +43,7 @@ public class CheckoutController {
             List<Checkout> checkouts = checkoutService.getCheckoutsByTable(tableNumber);
             return ResponseEntity.ok(checkouts.stream()
                     .map(this::mapToCheckoutResponse)
-                    .collect(Collectors.toList()));
+                    .toList());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -56,7 +55,7 @@ public class CheckoutController {
                 .tableNumber(checkout.getTableNumber())
                 .items(checkout.getItems().stream()
                         .map(this::mapToCheckoutItemResponse)
-                        .collect(Collectors.toList()))
+                        .toList())
                 .totalPrice(checkout.getTotalPrice())
                 .couponCode(checkout.getCouponCode())
                 .discountAmount(checkout.getDiscountAmount())
