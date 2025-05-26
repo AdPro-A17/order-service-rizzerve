@@ -26,6 +26,12 @@ jobs:
           PGPASSWORD: ${{ secrets.DB_PASSWORD }}
           DUCKDNS_DOMAIN: ${{ secrets.DUCKDNS_DOMAIN }}
           DUCKDNS_TOKEN: ${{ secrets.DUCKDNS_TOKEN }}
+          RABBITMQ_HOST: ${{ secrets.RABBITMQ_HOST }}
+          RABBITMQ_PORT: ${{ secrets.RABBITMQ_PORT }}
+          RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          RABBITMQ_VHOST: ${{ secrets.RABBITMQ_VHOST }}
+          RABBITMQ_SSL_ENABLED: ${{ secrets.RABBITMQ_SSL_ENABLED }}
         run: |
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << EOF
             # Step 1: Refresh DuckDNS IP
@@ -44,5 +50,11 @@ jobs:
               -e PGDATABASE='${PGDATABASE}' \
               -e PGUSER='${PGUSER}' \
               -e PGPASSWORD='${PGPASSWORD}' \
+              -e RABBITMQ_HOST='${RABBITMQ_HOST}' \
+              -e RABBITMQ_PORT='${RABBITMQ_PORT}' \
+              -e RABBITMQ_USERNAME='${RABBITMQ_USERNAME}' \
+              -e RABBITMQ_PASSWORD='${RABBITMQ_PASSWORD}' \
+              -e RABBITMQ_VHOST='${RABBITMQ_VHOST}' \
+              -e RABBITMQ_SSL_ENABLED='${RABBITMQ_SSL_ENABLED}' \
               order-service-rizzerve:latest
           EOF

@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.orderservice.config;
 
 import id.ac.ui.cs.advprog.orderservice.security.JwtAuthFilter;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -9,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,12 +21,18 @@ class SecurityConfigTest {
 
     @Mock
     private JwtAuthFilter jwtAuthFilter;
+    
+    private SecurityConfig securityConfig;
+    
+    @BeforeEach
+    void setUp() {
+        securityConfig = new SecurityConfig();
+        // Set the adminPassword field using reflection for testing
+        ReflectionTestUtils.setField(securityConfig, "adminPassword", "testPassword123");
+    }
 
     @Test
     void testPasswordEncoderBean() {
-        // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
-
         // Act
         PasswordEncoder passwordEncoder = securityConfig.passwordEncoder();
 
@@ -35,9 +43,6 @@ class SecurityConfigTest {
 
     @Test
     void testUserDetailsServiceBean() {
-        // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
-
         // Act
         UserDetailsService userDetailsService = securityConfig.userDetailsService();
 
@@ -49,9 +54,6 @@ class SecurityConfigTest {
 
     @Test
     void testCorsConfigurationSourceBean() {
-        // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
-
         // Act
         CorsConfigurationSource corsConfigurationSource = securityConfig.corsConfigurationSource();
 
@@ -62,9 +64,6 @@ class SecurityConfigTest {
 
     @Test
     void testCorsConfigurationCreation() {
-        // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
-
         // Act
         CorsConfigurationSource corsConfigurationSource = securityConfig.corsConfigurationSource();
 
@@ -77,7 +76,6 @@ class SecurityConfigTest {
     @Test
     void testPasswordEncoderEncryption() {
         // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
         PasswordEncoder encoder = securityConfig.passwordEncoder();
 
         // Act
@@ -93,9 +91,6 @@ class SecurityConfigTest {
 
     @Test
     void testUserDetailsServiceUserCreation() {
-        // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
-
         // Act
         UserDetailsService userDetailsService = securityConfig.userDetailsService();
 
@@ -117,7 +112,6 @@ class SecurityConfigTest {
     @Test
     void testUserDetailsServiceNonExistentUser() {
         // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
         UserDetailsService userDetailsService = securityConfig.userDetailsService();
 
         // Act & Assert
@@ -127,9 +121,6 @@ class SecurityConfigTest {
 
     @Test
     void testCorsConfigurationSourceRegistration() {
-        // Arrange
-        SecurityConfig securityConfig = new SecurityConfig();
-
         // Act
         CorsConfigurationSource source = securityConfig.corsConfigurationSource();
 
