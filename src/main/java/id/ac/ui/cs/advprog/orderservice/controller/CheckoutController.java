@@ -33,15 +33,21 @@ public class CheckoutController {
             return ResponseEntity.notFound().build();
         } catch (CouponApplicationException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @GetMapping("/table/{tableNumber}")
     public ResponseEntity<List<CheckoutResponse>> getCheckoutsByTable(@PathVariable int tableNumber) {
-        List<Checkout> checkouts = checkoutService.getCheckoutsByTable(tableNumber);
-        return ResponseEntity.ok(checkouts.stream()
-                .map(this::mapToCheckoutResponse)
-                .collect(Collectors.toList()));
+        try {
+            List<Checkout> checkouts = checkoutService.getCheckoutsByTable(tableNumber);
+            return ResponseEntity.ok(checkouts.stream()
+                    .map(this::mapToCheckoutResponse)
+                    .collect(Collectors.toList()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     private CheckoutResponse mapToCheckoutResponse(Checkout checkout) {
