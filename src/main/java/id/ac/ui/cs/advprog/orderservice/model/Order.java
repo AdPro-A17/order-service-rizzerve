@@ -133,15 +133,7 @@ public class Order {
     }
 
 
-    // Lombok will generate standard getters/setters for id, tableNumber, items, totalPrice, statusString
-    // We have custom ones for 'state' management.
-
-    // You might need @PostLoad annotated method if state hydration needs to happen right after entity load
-    // @PostLoad
-    // void initializeState() {
-    //     getState(); // Ensure currentState is initialized
-    // }
-
+    
     // Equals and HashCode based on ID
     @Override
     public boolean equals(Object o) {

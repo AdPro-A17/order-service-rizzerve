@@ -35,7 +35,7 @@ class TableEventListenerTest {
 
         tableEventListener.handleTableEvent(event);
 
-        verify(orderTableManagementService).handleTableDeleted(eq(mejaId), eq(nomorMeja));
+        verify(orderTableManagementService).handleTableDeleted(mejaId, nomorMeja);
         verify(orderTableManagementService, never()).handleTableNumberUpdated(any(), any(), any());
         verify(orderTableManagementService, never()).handleTableBecameAvailable(any(), any());
     }
@@ -49,7 +49,7 @@ class TableEventListenerTest {
 
         tableEventListener.handleTableEvent(event);
 
-        verify(orderTableManagementService).handleTableNumberUpdated(eq(mejaId), eq(String.valueOf(oldNomor)), eq(String.valueOf(newNomor)));
+        verify(orderTableManagementService).handleTableNumberUpdated(mejaId, String.valueOf(oldNomor), String.valueOf(newNomor));
         verify(orderTableManagementService, never()).handleTableDeleted(any(), any());
         verify(orderTableManagementService, never()).handleTableBecameAvailable(any(), any());
     }
@@ -62,7 +62,7 @@ class TableEventListenerTest {
 
         tableEventListener.handleTableEvent(event);
 
-        verify(orderTableManagementService).handleTableBecameAvailable(eq(mejaId), eq(String.valueOf(nomorMeja)));
+        verify(orderTableManagementService).handleTableBecameAvailable(mejaId, String.valueOf(nomorMeja));
         verify(orderTableManagementService, never()).handleTableDeleted(any(), any());
         verify(orderTableManagementService, never()).handleTableNumberUpdated(any(), any(), any());
     }
@@ -100,6 +100,6 @@ class TableEventListenerTest {
         doThrow(new RuntimeException("Service error")).when(orderTableManagementService).handleTableDeleted(any(), any());
 
         assertDoesNotThrow(() -> tableEventListener.handleTableEvent(event));
-        verify(orderTableManagementService).handleTableDeleted(eq(mejaId), eq(nomorMeja));
+        verify(orderTableManagementService).handleTableDeleted(mejaId, nomorMeja);
     }
 }

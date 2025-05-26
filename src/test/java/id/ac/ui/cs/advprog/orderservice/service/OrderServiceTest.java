@@ -172,8 +172,8 @@ class OrderServiceTest {
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order orderToSave = invocation.getArgument(0);
             orderToSave.getItems().stream()
-                    .filter(item -> item.getId() == null)
-                    .forEach(item -> item.setId(UUID.randomUUID()));
+                    .filter(orderItem -> orderItem.getId() == null)
+                    .forEach(orderItem -> orderItem.setId(UUID.randomUUID()));
             return orderToSave;
         });
         doNothing().when(orderEventPublisher).publishOrderEvent(any(OrderDetailsEvent.class));

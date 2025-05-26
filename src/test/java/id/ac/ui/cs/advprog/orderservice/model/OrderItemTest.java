@@ -121,7 +121,7 @@ class OrderItemTest {
 
         assertEquals(item1, item2);
         assertNotEquals(item1, item3);
-        assertNotEquals(item1, null);
+        assertNotEquals(null, item1);
         assertNotEquals(item1, new Object());
         assertEquals(item1.hashCode(), item2.hashCode()); // Hashcode relies on ID if not null
         // assertNotEquals(item1.hashCode(), item3.hashCode()); // Can clash

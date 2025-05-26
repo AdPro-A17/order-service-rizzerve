@@ -55,20 +55,20 @@ class OrderEventPublisherTest {
     void publishOrderCreatedEvent() {
         OrderDetailsEvent event = createSampleEvent(OrderDetailsEvent.EventType.CREATED);
         orderEventPublisher.publishOrderEvent(event);
-        verify(rabbitTemplate).convertAndSend(eq(exchangeName), eq(rkCreated), eq(event));
+        verify(rabbitTemplate).convertAndSend(exchangeName, rkCreated, event);
     }
 
     @Test
     void publishOrderUpdatedEvent() {
         OrderDetailsEvent event = createSampleEvent(OrderDetailsEvent.EventType.UPDATED);
         orderEventPublisher.publishOrderEvent(event);
-        verify(rabbitTemplate).convertAndSend(eq(exchangeName), eq(rkUpdated), eq(event));
+        verify(rabbitTemplate).convertAndSend(exchangeName, rkUpdated, event);
     }
 
     @Test
     void publishOrderCompletedEvent() {
         OrderDetailsEvent event = createSampleEvent(OrderDetailsEvent.EventType.COMPLETED);
         orderEventPublisher.publishOrderEvent(event);
-        verify(rabbitTemplate).convertAndSend(eq(exchangeName), eq(rkCompleted), eq(event));
+        verify(rabbitTemplate).convertAndSend(exchangeName, rkCompleted, event);
     }
 }

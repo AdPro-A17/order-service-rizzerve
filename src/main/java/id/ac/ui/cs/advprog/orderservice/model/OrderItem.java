@@ -176,7 +176,7 @@ public class OrderItem {
     public void setMenuItemId(UUID menuItemId) { this.menuItemId = menuItemId; }
     public void setMenuItemName(String menuItemName) { this.menuItemName = menuItemName; }
     // Setter for subtotal is private/removed as it's calculated
-    // public void setSubtotal(double subtotal) { this.subtotal = subtotal; }
+ 
 
     // Equals and HashCode based on ID
      @Override
@@ -191,6 +191,6 @@ public class OrderItem {
     public int hashCode() {
         return 31; // Fixed hashCode when ID is null (before persistence)
                     // Or use getClass().hashCode() if IDs are always generated before hash is needed.
-                    // If using ID after generation: Objects.hash(id);
+                    
     }
 }

@@ -161,13 +161,5 @@ class OrderRepositoryTest {
         assertNull(entityManager.find(OrderItem.class, persistedItem1Id)); // Item should be gone
     }
 
-    // Example: findByTableNumber test (if method was added to repository)
-    // @Test
-    // void whenFindByTableNumber_thenReturnCorrectOrders() {
-    //     // Define the method in OrderRepository first:
-    //     // List<Order> findByTableNumber(String tableNumber);
-    //     List<Order> found = orderRepository.findByTableNumber("T1");
-    //     assertEquals(1, found.size());
-    //     assertEquals(order1Id, found.get(0).getId());
-    // }
+    
 } 
