@@ -49,7 +49,7 @@ jobs:
             docker rm order-service || true
             docker build -t order-service-rizzerve:latest .
             docker run -d --name order-service \
-              -p 8082:8082 \
+              -p 8080:8080 \
               -e PGHOST='${PGHOST}' \
               -e PGDATABASE='${PGDATABASE}' \
               -e PGUSER='${PGUSER}' \
