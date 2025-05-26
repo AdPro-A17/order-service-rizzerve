@@ -2,7 +2,6 @@ package id.ac.ui.cs.advprog.orderservice.service;
 
 import id.ac.ui.cs.advprog.orderservice.client.TableServiceClient;
 import id.ac.ui.cs.advprog.orderservice.dto.CheckoutRequest;
-import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 import id.ac.ui.cs.advprog.orderservice.model.Order;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;

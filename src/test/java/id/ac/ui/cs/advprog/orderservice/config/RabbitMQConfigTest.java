@@ -126,7 +126,6 @@ class RabbitMQConfigTest {
         // Arrange
         Queue queue = rabbitMQConfig.orderServiceTableEventsQueue();
         TopicExchange exchange1 = rabbitMQConfig.tableEventsExchange();
-        TopicExchange exchange2 = rabbitMQConfig.orderEventsExchangePublisher();
 
         // Act
         Binding binding1 = rabbitMQConfig.tableDeletedBinding(queue, exchange1);

@@ -1,7 +1,6 @@
 package id.ac.ui.cs.advprog.orderservice.controller;
 
 import id.ac.ui.cs.advprog.orderservice.dto.CheckoutRequest;
-import id.ac.ui.cs.advprog.orderservice.dto.CheckoutResponse;
 import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;

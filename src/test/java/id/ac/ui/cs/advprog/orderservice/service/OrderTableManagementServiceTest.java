@@ -40,8 +40,8 @@ class OrderTableManagementServiceTest {
 
         orderTableManagementService.handleTableDeleted(mejaId, nomorMeja);
 
-        verify(orderRepository).findByTableNumberAndStatusStringNotIn(eq(tableNumStr), eq(List.of("COMPLETED", "CANCELLED")));
-        verify(orderRepository).deleteAll(eq(mockOrders));
+        verify(orderRepository).findByTableNumberAndStatusStringNotIn(tableNumStr, List.of("COMPLETED", "CANCELLED"));
+        verify(orderRepository).deleteAll(mockOrders);
     }
 
     @Test
@@ -54,7 +54,7 @@ class OrderTableManagementServiceTest {
 
         orderTableManagementService.handleTableDeleted(mejaId, nomorMeja);
 
-        verify(orderRepository).findByTableNumberAndStatusStringNotIn(eq(tableNumStr), eq(List.of("COMPLETED", "CANCELLED")));
+        verify(orderRepository).findByTableNumberAndStatusStringNotIn(tableNumStr, List.of("COMPLETED", "CANCELLED"));
         verify(orderRepository, never()).deleteAll(anyList());
     }
 
@@ -72,9 +72,9 @@ class OrderTableManagementServiceTest {
 
         orderTableManagementService.handleTableNumberUpdated(mejaId, oldTableNumber, newTableNumber);
 
-        verify(orderRepository).findByTableNumberAndStatusStringNotIn(eq(oldTableNumber), eq(List.of("COMPLETED", "CANCELLED")));
+        verify(orderRepository).findByTableNumberAndStatusStringNotIn(oldTableNumber, List.of("COMPLETED", "CANCELLED"));
         assertEquals(newTableNumber, order1.getTableNumber());
-        verify(orderRepository).saveAll(eq(mockOrders));
+        verify(orderRepository).saveAll(mockOrders);
     }
 
     @Test
@@ -87,7 +87,7 @@ class OrderTableManagementServiceTest {
 
         orderTableManagementService.handleTableNumberUpdated(mejaId, oldTableNumber, newTableNumber);
 
-        verify(orderRepository).findByTableNumberAndStatusStringNotIn(eq(oldTableNumber), eq(List.of("COMPLETED", "CANCELLED")));
+        verify(orderRepository).findByTableNumberAndStatusStringNotIn(oldTableNumber, List.of("COMPLETED", "CANCELLED"));
         verify(orderRepository, never()).saveAll(anyList());
     }
 
@@ -97,5 +97,8 @@ class OrderTableManagementServiceTest {
         String tableNumber = "107";
 
         orderTableManagementService.handleTableBecameAvailable(mejaId, tableNumber);
+        
+        // Verify no repository interactions occur for this method
+        verifyNoInteractions(orderRepository);
     }
 }
