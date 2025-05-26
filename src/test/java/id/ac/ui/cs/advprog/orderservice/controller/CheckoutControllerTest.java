@@ -2,7 +2,6 @@ package id.ac.ui.cs.advprog.orderservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.orderservice.dto.CheckoutRequest;
-import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
 import id.ac.ui.cs.advprog.orderservice.model.Checkout;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;

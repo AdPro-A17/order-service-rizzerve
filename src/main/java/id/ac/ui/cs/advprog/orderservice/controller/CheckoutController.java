@@ -6,7 +6,7 @@ import id.ac.ui.cs.advprog.orderservice.service.CheckoutService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import id.ac.ui.cs.advprog.orderservice.exception.InvalidOrderStatusForCheckoutException;
-import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException; // Import the new exception
+import id.ac.ui.cs.advprog.orderservice.exception.CouponApplicationException;
 import org.springframework.http.HttpStatus;
 import id.ac.ui.cs.advprog.orderservice.model.OrderItem;
 
@@ -41,7 +41,7 @@ public class CheckoutController {
         List<Checkout> checkouts = checkoutService.getCheckoutsByTable(tableNumber);
         return ResponseEntity.ok(checkouts.stream()
                 .map(this::mapToCheckoutResponse)
-                .collect(Collectors.toList()));
+                .toList());
     }
 
     private CheckoutResponse mapToCheckoutResponse(Checkout checkout) {
