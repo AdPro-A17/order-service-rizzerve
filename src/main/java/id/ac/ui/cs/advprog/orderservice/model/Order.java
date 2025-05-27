@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.persistence.*;
 import id.ac.ui.cs.advprog.orderservice.enums.OrderStatus;
 
 import java.math.BigDecimal;
