@@ -22,7 +22,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.UUID;
 
-
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -66,7 +65,7 @@ public class OrderController {
             @PathVariable UUID orderId,
             @RequestBody OrderItemRequest request) {
         try {
-            // Fetch menu item details from menu service
+            // Fetch menu item details from menu service,  Synchronous HTTP call to Menu Service
             MenuServiceClient.MenuItemResponse menuItem = menuServiceClient.getMenuItemById(request.getMenuItemId());
             if (menuItem == null) {
                 throw new MenuItemNotFoundException(request.getMenuItemId());
